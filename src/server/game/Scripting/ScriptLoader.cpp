@@ -1444,6 +1444,21 @@ void AddBattlegroundScripts()
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
 void AddSC_CPWS_Transmogrification();
+//Bots
+void AddSC_death_knight_bot();
+void AddSC_druid_bot();
+void AddSC_hunter_bot();
+void AddSC_mage_bot();
+void AddSC_paladin_bot();
+void AddSC_priest_bot();
+void AddSC_rogue_bot();
+void AddSC_shaman_bot();
+void AddSC_warlock_bot();
+void AddSC_warrior_bot();
+void AddSC_script_bot_commands();
+//advanced
+void AddSC_BotQuests_chapter1();
+//end Bots
 #endif
 
 void AddCustomScripts()
@@ -1453,6 +1468,21 @@ void AddCustomScripts()
     // TeleNPC2
     AddSC_CPWS_Transmogrification();
     AddSC_npc_teleport();
+    //Bots
+    AddSC_death_knight_bot();
+    AddSC_druid_bot();
+    AddSC_hunter_bot();
+    AddSC_mage_bot();
+    AddSC_paladin_bot();
+    AddSC_priest_bot();
+    AddSC_rogue_bot();
+    AddSC_shaman_bot();
+    AddSC_warlock_bot();
+    AddSC_warrior_bot();
+    AddSC_script_bot_commands();
+    //advanced
+    AddSC_BotQuests_chapter1();
+    //end Bots
 
 #endif
 }

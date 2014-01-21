@@ -6151,8 +6151,6 @@ void Player::BuildPlayerRepop()
     if (corpseReclaimDelay >= 0)
         SendCorpseReclaimDelay(corpseReclaimDelay);
 
-    SendCorpseReclaimDelay();
-
     // to prevent cheating
     corpse->ResetGhostTime();
 

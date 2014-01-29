@@ -368,9 +368,9 @@ public:
 
                 if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 EnterEvadeMode();
@@ -502,9 +502,9 @@ public:
 
                 if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 if (instance)
@@ -647,9 +647,9 @@ public:
 
                 if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 if (instance)
@@ -793,9 +793,9 @@ public:
 
                 if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 if (instance)
@@ -941,9 +941,9 @@ public:
 
                 if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (instance && me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 if (instance)

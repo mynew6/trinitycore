@@ -5700,17 +5700,6 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                     break;
                 }
             }
-
-            // Retaliation
-            if (dummySpell->SpellFamilyFlags[1] & 0x8)
-            {
-                // check attack comes not from behind
-                if (!HasInArc(M_PI, victim) || HasUnitState(UNIT_STATE_STUNNED))
-                    return false;
-
-                triggered_spell_id = 22858;
-                break;
-            }
             // Second Wind
             if (dummySpell->SpellIconID == 1697)
             {
@@ -5738,19 +5727,6 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
             if (dummySpell->Id == 58375)
             {
                 triggered_spell_id = 58374;
-                break;
-            }
-            // Glyph of Sunder Armor
-            if (dummySpell->Id == 58387)
-            {
-                if (!victim || !victim->IsAlive() || !procSpell)
-                    return false;
-
-                target = SelectNearbyTarget(victim);
-                if (!target)
-                    return false;
-
-                triggered_spell_id = 58567;
                 break;
             }
             break;
@@ -9439,10 +9415,8 @@ void Unit::SetMinion(Minion *minion, bool apply)
         m_Controlled.erase(minion);
 
         if (minion->m_Properties && minion->m_Properties->Type == SUMMON_TYPE_MINIPET)
-        {
             if (GetCritterGUID() == minion->GetGUID())
                 SetCritterGUID(0);
-        }
 
         if (minion->IsGuardianPet())
         {
@@ -13318,12 +13292,14 @@ void Unit::SetLevel(uint8 lvl)
 {
     SetUInt32Value(UNIT_FIELD_LEVEL, lvl);
 
-    // group update
-    if (GetTypeId() == TYPEID_PLAYER && ToPlayer()->GetGroup())
-        ToPlayer()->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_LEVEL);
+    if (Player* player = ToPlayer())
+    {
+        // group update
+        if (player->GetGroup())
+            player->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_LEVEL);
 
-    if (GetTypeId() == TYPEID_PLAYER)
-        sWorld->UpdateCharacterNameDataLevel(ToPlayer()->GetGUIDLow(), lvl);
+            sWorld->UpdateCharacterNameDataLevel(GetGUIDLow(), lvl);
+    }
 }
 
 void Unit::SetHealth(uint32 val)

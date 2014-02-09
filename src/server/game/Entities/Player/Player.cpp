@@ -17108,10 +17108,10 @@ QuestGiverStatus Player::GetQuestDialogStatus(Object* questgiver)
             return DIALOG_STATUS_NONE;
     }
 
-     QuestGiverStatus result = DIALOG_STATUS_NONE;
+    QuestGiverStatus result = DIALOG_STATUS_NONE;
 
     for (QuestRelations::const_iterator i = qir.first; i != qir.second; ++i)
-   {
+    {
         QuestGiverStatus result2 = DIALOG_STATUS_NONE;
         uint32 questId = i->second;
         Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
@@ -17176,10 +17176,9 @@ QuestGiverStatus Player::GetQuestDialogStatus(Object* questgiver)
 
         if (result2 > result)
             result = result2;
-   }
+    }
 
     return result;
-    }
 }
 
 // not used in Trinity, but used in scripting code

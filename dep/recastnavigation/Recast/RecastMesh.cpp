@@ -470,6 +470,7 @@ static void mergePolys(unsigned short* pa, unsigned short* pb, int ea, int eb,
 	memcpy(pa, tmp, sizeof(unsigned short)*nvp);
 }
 
+
 static void pushFront(int v, int* arr, int& an)
 {
 	an++;
@@ -1044,7 +1045,7 @@ bool rcBuildPolyMesh(rcContext* ctx, rcContourSet& cset, int nvp, rcPolyMesh& me
 				vflags[indices[j]] = 1;
 			}
 		}
-		
+
 		// Build initial polygons.
 		int npolys = 0;
 		memset(polys, 0xff, maxVertsPerCont*nvp*sizeof(unsigned short));
@@ -1141,6 +1142,7 @@ bool rcBuildPolyMesh(rcContext* ctx, rcContourSet& cset, int nvp, rcPolyMesh& me
 			}
 			// Remove vertex
 			// Note: mesh.nverts is already decremented inside removeVertex()!
+			// Fixup vertex flags
 			for (int j = i; j < mesh.nverts; ++j)
 				vflags[j] = vflags[j+1];
 			--i;
@@ -1177,6 +1179,7 @@ bool rcBuildPolyMesh(rcContext* ctx, rcContourSet& cset, int nvp, rcPolyMesh& me
 	return true;
 }
 
+/// @see rcAllocPolyMesh, rcPolyMesh
 bool rcMergePolyMeshes(rcContext* ctx, rcPolyMesh** meshes, const int nmeshes, rcPolyMesh& mesh)
 {
 	rcAssert(ctx);

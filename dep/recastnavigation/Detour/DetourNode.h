@@ -31,13 +31,14 @@ static const unsigned short DT_NULL_IDX = 0xffff;
 
 struct dtNode
 {
-	float pos[3];				// Position of the node.
-	float cost;					// Cost from previous node to current node.
-	float total;				// Cost up to the node.
-	unsigned int pidx : 30;		// Index to parent node.
-	unsigned int flags : 2;		// Node flags 0/open/closed.
-	dtPolyRef id;				// Polygon ref the node corresponds to.
+	float pos[3];				///< Position of the node.
+	float cost;					///< Cost from previous node to current node.
+	float total;				///< Cost up to the node.
+	unsigned int pidx : 30;		///< Index to parent node.
+	unsigned int flags : 2;		///< Node flags 0/open/closed.
+	dtPolyRef id;				///< Polygon ref the node corresponds to.
 };
+
 
 class dtNodePool
 {
@@ -70,9 +71,9 @@ public:
 	inline int getMemUsed() const
 	{
 		return sizeof(*this) +
-		sizeof(dtNode)*m_maxNodes +
-		sizeof(unsigned short)*m_maxNodes +
-		sizeof(unsigned short)*m_hashSize;
+			sizeof(dtNode)*m_maxNodes +
+			sizeof(unsigned short)*m_maxNodes +
+			sizeof(unsigned short)*m_hashSize;
 	}
 	
 	inline int getMaxNodes() const { return m_maxNodes; }

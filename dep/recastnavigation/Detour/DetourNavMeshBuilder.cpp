@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 #include "DetourNavMesh.h"
 #include "DetourCommon.h"
 #include "DetourNavMeshBuilder.h"
@@ -237,11 +238,19 @@ static unsigned char classifyOffMeshPoint(const float* pt, const float* bmin, co
 	case ZM: return 6;
 	case XP|ZM: return 7;
 	};
+
 	return 0xff;	
 }
 
 // TODO: Better error handling.
 
+/// @par
+/// 
+/// The output data array is allocated using the detour allocator (dtAlloc()).  The method
+/// used to free the memory will be determined by how the tile is added to the navigation
+/// mesh.
+///
+/// @see dtNavMesh, dtNavMesh::addTile()
 bool dtCreateNavMeshData(dtNavMeshCreateParams* params, unsigned char** outData, int* outDataSize)
 {
 	if (params->nvp > DT_VERTS_PER_POLYGON)
@@ -626,6 +635,12 @@ bool dtNavMeshHeaderSwapEndian(unsigned char* data, const int /*dataSize*/)
 	return true;
 }
 
+/// @par
+///
+/// @warning This function assumes that the header is in the correct endianess already. 
+/// Call #dtNavMeshHeaderSwapEndian() first on the data if the data is expected to be in wrong endianess 
+/// to start with. Call #dtNavMeshHeaderSwapEndian() after the data has been swapped if converting from 
+/// native to foreign endianess.
 bool dtNavMeshDataSwapEndian(unsigned char* data, const int /*dataSize*/)
 {
 	// Make sure the data is in right format.

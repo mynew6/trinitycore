@@ -749,6 +749,9 @@ static void getHeightData(const rcCompactHeightfield& chf,
 	// Floodfill the heightfield to get 2D height data,
 	// starting at vertex locations as seeds.
 	
+	// Note: Reads to the compact heightfield are offset by border size (bs)
+	// since border size offset is already removed from the polymesh vertices.
+	
 	memset(hp.data, 0, sizeof(unsigned short)*hp.width*hp.height);
 	
 	stack.resize(0);
@@ -938,8 +941,11 @@ static unsigned char getTriFlags(const float* va, const float* vb, const float* 
 	return flags;
 }
 
-
-
+/// @par
+///
+/// See the #rcConfig documentation for more information on the configuration parameters.
+///
+/// @see rcAllocPolyMeshDetail, rcPolyMesh, rcCompactHeightfield, rcPolyMeshDetail, rcConfig
 bool rcBuildPolyMeshDetail(rcContext* ctx, const rcPolyMesh& mesh, const rcCompactHeightfield& chf,
 						   const float sampleDist, const float sampleMaxError,
 						   rcPolyMeshDetail& dmesh)
@@ -1157,6 +1163,7 @@ bool rcBuildPolyMeshDetail(rcContext* ctx, const rcPolyMesh& mesh, const rcCompa
 	return true;
 }
 
+/// @see rcAllocPolyMeshDetail, rcPolyMeshDetail
 bool rcMergePolyMeshDetails(rcContext* ctx, rcPolyMeshDetail** meshes, const int nmeshes, rcPolyMeshDetail& mesh)
 {
 	rcAssert(ctx);
@@ -1234,4 +1241,3 @@ bool rcMergePolyMeshDetails(rcContext* ctx, rcPolyMeshDetail** meshes, const int
 	
 	return true;
 }
-

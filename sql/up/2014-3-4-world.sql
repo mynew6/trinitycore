@@ -1,0 +1,1 @@
+update creature_template set minlevel=1 where creature_template.entry>70000 and creature_template.entry<80000;

@@ -399,12 +399,19 @@ public:
             handler->SetSentErrorMessage(true);
             return false;
         }
-        if (owner->GetGroup() && owner->GetGroup()->isRaidGroup() && owner->GetGroup()->IsFull())
+        if (owner->GetGroup() && owner->GetGroup()->IsFull())
         {
             handler->PSendSysMessage("　队伍已经满了　");
             handler->SetSentErrorMessage(true);
             return false;
         }
+        /*else if (owner->GetGroup()->isRaidGroup() && owner->GetGroup()->IsFull())
+        {
+            handler->PSendSysMessage("　团队已经满了　");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }*/
+        
         if (owner->GetNpcBotsCount() >= owner->GetMaxNpcBots())
         {
             handler->PSendSysMessage("　机器人超出限制　");

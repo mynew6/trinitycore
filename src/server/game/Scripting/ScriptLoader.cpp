@@ -1444,6 +1444,7 @@ void AddBattlegroundScripts()
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
 void AddSC_CPWS_Transmogrification();
+void AddSC_REFORGER_NPC();
 //Bots
 void AddSC_death_knight_bot();
 void AddSC_druid_bot();
@@ -1465,6 +1466,7 @@ void AddCustomScripts()
 {
 #ifdef SCRIPTS
     /* This is where custom scripts should be added. */
+    AddSC_REFORGER_NPC();
     // TeleNPC2
     AddSC_CPWS_Transmogrification();
     AddSC_npc_teleport();

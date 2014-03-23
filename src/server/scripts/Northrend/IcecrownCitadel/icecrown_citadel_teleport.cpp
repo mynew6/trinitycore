@@ -38,7 +38,7 @@ class icecrown_citadel_teleport : public GameObjectScript
                     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "传送到诅咒祷堂　", GOSSIP_SENDER_ICC_PORT, ORATORY_OF_THE_DAMNED_TELEPORT);
                 if (instance->GetBossState(DATA_LADY_DEATHWHISPER) == DONE)
                     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "传送到颅骨之墙　", GOSSIP_SENDER_ICC_PORT, RAMPART_OF_SKULLS_TELEPORT);
-                if (instance->GetBossState(DATA_GUNSHIP_EVENT) == DONE)
+                if (instance->GetBossState(DATA_ICECROWN_GUNSHIP_BATTLE) == DONE)
                     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "传送到死亡使者的高台　", GOSSIP_SENDER_ICC_PORT, DEATHBRINGER_S_RISE_TELEPORT);
                 if (instance->GetData(DATA_COLDFLAME_JETS) == DONE)
                     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "传送到冰冠堡垒　", GOSSIP_SENDER_ICC_PORT, UPPER_SPIRE_TELEPORT);

@@ -31,7 +31,7 @@ public:
             { "juli",   rbac::RBAC_PERM_COMMAND_NPCBOT_DIST,    false, &HandleNpcBotDistanceCommand,        "", NULL },
             { "info",       rbac::RBAC_PERM_COMMAND_NPCBOT_INFO,    false, &HandleNpcBotInfoCommand,            "", NULL },
             { "helper",     rbac::RBAC_PERM_COMMAND_NPCBOT_HELPER,  false, &HandleBotHelperCommand,             "", NULL },
-            { "revive",     rbac::RBAC_PERM_COMMAND_NPCBOT_REVIVE,  false, &HandleNpcBotReviveCommand,          "", NULL },
+            { "fuhuo",     rbac::RBAC_PERM_COMMAND_NPCBOT_REVIVE,  false, &HandleNpcBotReviveCommand,          "", NULL },
             { NULL,         0,                                      false, NULL,                                "", NULL }
         };
 

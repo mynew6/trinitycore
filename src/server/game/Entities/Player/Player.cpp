@@ -3979,6 +3979,9 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
     float favored_exp_mult = 0;
     if ((HasAura(32096) || HasAura(32098)) && (zone == 3483 || zone == 3562 || zone == 3836 || zone == 3713 || zone == 3714))
         favored_exp_mult = 0.05f; // Thrallmar's Favor and Honor Hold's Favor
+    if (GetNpcBotsCount() > 1)
+    xp = uint32(xp * (1 + favored_exp_mult) / (GetNpcBotsCount() + 1));
+    else
     xp = uint32(xp * (1 + favored_exp_mult));
     // Favored experience increase END
 

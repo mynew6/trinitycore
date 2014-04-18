@@ -206,6 +206,17 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             return;
         }
 #endif
+        //Bot
+        else if (guid == _player->GetGUID())
+        {
+            if (!_player->GetBotHelper())
+            {
+                TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) do not have a helper on gossip select.", uint32(GUID_LOPART(guid)));
+                return;
+            }
+            //_player->GetBotHelper()->OnCodedGossipSelect(_player, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId), code.c_str());
+        }
+        //end Bot
         else
         {
             go->AI()->GossipSelectCode(_player, menuId, gossipListId, code.c_str());
@@ -233,6 +244,17 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             return;
         }
 #endif
+        //Bot
+        else if (guid == _player->GetGUID())
+        {
+            if (!_player->GetBotHelper())
+            {
+                TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) do not have a helper on gossip select.", uint32(GUID_LOPART(guid)));
+                return;
+            }
+            _player->GetBotHelper()->OnGossipSelect(_player, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+        }
+        //end Bot
         else
         {
             go->AI()->GossipSelect(_player, menuId, gossipListId);

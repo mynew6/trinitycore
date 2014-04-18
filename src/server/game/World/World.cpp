@@ -28,7 +28,6 @@
 #include "Log.h"
 #include "Opcodes.h"
 #include "WorldSession.h"
-#include "AuctionHouseBot.h"
 #include "WorldPacket.h"
 #include "Player.h"
 #include "Vehicle.h"
@@ -1818,9 +1817,6 @@ void World::SetInitialWorldSettings()
 
     LoadCharacterNameData();
 
-    TC_LOG_INFO("server.loading", "Initialize AuctionHouseBot...");
-    auctionbot.Initialize();
-
     uint32 startupDuration = GetMSTimeDiffToNow(startupBegin);
 
     TC_LOG_INFO("server.worldserver", "World initialized in %u minutes %u seconds", (startupDuration / 60000), ((startupDuration % 60000) / 1000));
@@ -1988,7 +1984,6 @@ void World::Update(uint32 diff)
     /// <ul><li> Handle auctions when the timer has passed
     if (m_timers[WUPDATE_AUCTIONS].Passed())
     {
-        auctionbot.Update();
         m_timers[WUPDATE_AUCTIONS].Reset();
 
         ///- Update mails (return old mails with item, or delete them)

@@ -46,7 +46,7 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
-
+#include "HookMgr.h"
 
 //bot
 #include "Config.h"
@@ -1007,6 +1007,10 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
         pCurrChar->SendTalentsInfoData(false);              // original talents send already in to SendInitialPacketsBeforeAddToMap, resend reset state
         SendNotification(LANG_RESET_TALENTS);
     }
+#ifdef ELUNA
+    if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
+        sHookMgr->OnFirstLogin(pCurrChar);
+#endif
 
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
         pCurrChar->RemoveAtLoginFlag(AT_LOGIN_FIRST);

@@ -2855,8 +2855,7 @@ class DontLooksDirectlyInGazeCheck
 
         bool operator() (WorldObject* unit)
         {
-            Position pos;
-            _caster->GetPosition(&pos);
+			Position pos = _caster->GetPosition();
             return !unit->HasInArc(static_cast<float>(M_PI), &pos);
         }
 

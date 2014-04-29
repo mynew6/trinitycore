@@ -25,13 +25,13 @@ public:
         static ChatCommand npcbotCommandTable[] =
         {
             { "add",        rbac::RBAC_PERM_COMMAND_NPCBOT_ADD,     false, &HandleNpcBotAddCommand,             "", NULL },
-            { "remove",     rbac::RBAC_PERM_COMMAND_NPCBOT_REMOVE,  false, &HandleNpcBotRemoveCommand,          "", NULL },
-            { "reset",      rbac::RBAC_PERM_COMMAND_NPCBOT_RESET,   false, &HandleNpcBotResetCommand,           "", NULL },
+            { "shanchu",     rbac::RBAC_PERM_COMMAND_NPCBOT_REMOVE,  false, &HandleNpcBotRemoveCommand,          "", NULL },
+            { "shuaxin",      rbac::RBAC_PERM_COMMAND_NPCBOT_RESET,   false, &HandleNpcBotResetCommand,           "", NULL },
             { "command",    rbac::RBAC_PERM_COMMAND_NPCBOT_CMD,     false, &HandleNpcBotCommandCommand,         "", NULL },
-            { "distance",   rbac::RBAC_PERM_COMMAND_NPCBOT_DIST,    false, &HandleNpcBotDistanceCommand,        "", NULL },
+            { "juli",   rbac::RBAC_PERM_COMMAND_NPCBOT_DIST,    false, &HandleNpcBotDistanceCommand,        "", NULL },
             { "info",       rbac::RBAC_PERM_COMMAND_NPCBOT_INFO,    false, &HandleNpcBotInfoCommand,            "", NULL },
             { "helper",     rbac::RBAC_PERM_COMMAND_NPCBOT_HELPER,  false, &HandleBotHelperCommand,             "", NULL },
-            { "revive",     rbac::RBAC_PERM_COMMAND_NPCBOT_REVIVE,  false, &HandleNpcBotReviveCommand,          "", NULL },
+            { "fuhuo",     rbac::RBAC_PERM_COMMAND_NPCBOT_REVIVE,  false, &HandleNpcBotReviveCommand,          "", NULL },
             { NULL,         0,                                      false, NULL,                                "", NULL }
         };
 
@@ -149,14 +149,13 @@ public:
         {
             if (owner->HaveBot())
             {
-                handler->PSendSysMessage("bot follow distance is %u", owner->GetBotFollowDist());
+                handler->PSendSysMessage("　机器人的距离为 %u", owner->GetBotFollowDist());
                 handler->SetSentErrorMessage(true);
                 return false;
             }
-            handler->PSendSysMessage(".npcbot distance");
-            handler->PSendSysMessage("Sets 'distance to target' at which bots will follow you");
-            handler->PSendSysMessage("if set to 0, bots will not attack anything unless you point them");
-            handler->PSendSysMessage("min: 0, max: 75");
+            handler->PSendSysMessage(".npcbot juli");
+            handler->PSendSysMessage("　设置机器人与你的距离　");
+            handler->PSendSysMessage("　最低: 0, 最高: 75");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -199,10 +198,10 @@ public:
                     }
                 }
             }
-            handler->PSendSysMessage("bot follow distance set to %u", dist);
+            handler->PSendSysMessage("　机器人跟随距离为 %u", dist);
             return true;
         }
-        handler->SendSysMessage("follow distance should be between 0 and 75");
+        handler->SendSysMessage("　距离只能是０－７５之间　");
         handler->SetSentErrorMessage(true);
         return false;
     }
@@ -243,8 +242,8 @@ public:
         uint64 guid = owner->GetTarget();
         if (!guid)
         {
-            handler->PSendSysMessage(".npcbot remove");
-            handler->PSendSysMessage("Remove selected npcbots. Select yourself to remove all npcbots");
+            handler->PSendSysMessage(".npcbot shanchu");
+            handler->PSendSysMessage("删除指定的机器人　");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -257,15 +256,15 @@ public:
 
                 if (!owner->HaveBot())
                 {
-                    handler->PSendSysMessage("Npcbots successfully removed");
+                    handler->PSendSysMessage("　机器人已经删除　");
                     handler->SetSentErrorMessage(true);
                     return true;
                 }
-                handler->PSendSysMessage("Some npcbots were not removed!");
+                handler->PSendSysMessage("　未知原因没有删除　");
                 handler->SetSentErrorMessage(true);
                 return false;
             }
-            handler->PSendSysMessage("Npcbots are not found!");
+            handler->PSendSysMessage("　没有找到此机器人　");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -276,7 +275,7 @@ public:
             Player* master = cre->GetBotOwner();
             if (!master || (master->GetGUID() != owner->GetGUID()))
             {
-                handler->PSendSysMessage("You can only remove your own bots");
+                handler->PSendSysMessage("　你只能删除自己的机器人　");
                 handler->SetSentErrorMessage(true);
                 return false;
             }
@@ -284,7 +283,7 @@ public:
             master->RemoveBot(cre->GetGUID(), true);
             if (master->GetBotMap(pos)->_Cre() == NULL)
             {
-                handler->PSendSysMessage("NpcBot successfully removed");
+                handler->PSendSysMessage("　机器人已经删除　");
                 handler->SetSentErrorMessage(true);
                 return true;
             }
@@ -292,7 +291,7 @@ public:
             handler->SetSentErrorMessage(true);
             return false;
         }
-        handler->PSendSysMessage("You should select self or your npcbot!");
+        handler->PSendSysMessage("　你只能选择你的机器人　");
         handler->SetSentErrorMessage(true);
         return false;
     }
@@ -305,8 +304,8 @@ public:
         uint64 guid = owner->GetTarget();
         if (!guid)
         {
-            handler->PSendSysMessage(".npcbot reset");
-            handler->PSendSysMessage("Reset selected npcbot, or all npcbots if used on self");
+            handler->PSendSysMessage(".npcbot shuaxin");
+            handler->PSendSysMessage("　刷新机器人只能选择你自己的机器人　");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -324,7 +323,7 @@ public:
         {
             if (!master->HaveBot())
             {
-                handler->PSendSysMessage("Npcbots are not found!");
+                handler->PSendSysMessage("　机器人没有找到!");
                 handler->SetSentErrorMessage(true);
                 return false;
             }
@@ -341,8 +340,8 @@ public:
             handler->SetSentErrorMessage(true);
             return true;
         }
-        handler->PSendSysMessage(".npcbot reset");
-        handler->PSendSysMessage("Reset selected npcbot. Cannot be used in combat");
+        handler->PSendSysMessage(".npcbot shuaxin");
+        handler->PSendSysMessage("　刷新你的机器人　");
         handler->SetSentErrorMessage(true);
         return false;
     }
@@ -384,31 +383,38 @@ public:
         if (!*args || sel != owner->GetGUID())
         {
             handler->PSendSysMessage(".npcbot add");
-            handler->PSendSysMessage("Allows to create npcbot of given class, you should select yourself");
+            handler->PSendSysMessage("　可以创建一个机器人目标必须选择你自己　");
             handler->SetSentErrorMessage(true);
             return false;
         }
         if (owner->RestrictBots())
         {
-            handler->GetSession()->SendNotification("This place is restricted for NpcBots");
+            handler->GetSession()->SendNotification("　这个地方不能召唤机器人　");
             handler->SetSentErrorMessage(true);
             return false;
         }
         if (owner->isDead())
         {
-            owner->GetSession()->SendNotification("You're dead!");
+            owner->GetSession()->SendNotification("　已经死亡　");
             handler->SetSentErrorMessage(true);
             return false;
         }
-        if (owner->GetGroup() && owner->GetGroup()->isRaidGroup() && owner->GetGroup()->IsFull())
+        if (owner->GetGroup() && owner->GetGroup()->IsFull())
         {
-            handler->PSendSysMessage("Group is full, aborted");
+            handler->PSendSysMessage("　队伍已经满了　");
             handler->SetSentErrorMessage(true);
             return false;
         }
+        /*else if (owner->GetGroup()->isRaidGroup() && owner->GetGroup()->IsFull())
+        {
+            handler->PSendSysMessage("　团队已经满了　");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }*/
+        
         if (owner->GetNpcBotsCount() >= owner->GetMaxNpcBots())
         {
-            handler->PSendSysMessage("NpcBots limit exceed");
+            handler->PSendSysMessage("　机器人超出限制　");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -416,37 +422,37 @@ public:
         char* bclass = strtok((char*)args, " ");
         uint8 botclass = CLASS_NONE;
 
-        if (!strncmp(bclass, "deathknight", 12) || !strncmp(bclass, "deathk", 7) || !strncmp(bclass, "death", 6) || !strncmp(bclass, "deat", 5) ||
+        if (!strncmp(bclass, "siqi", 12) || !strncmp(bclass, "deathk", 7) || !strncmp(bclass, "death", 6) || !strncmp(bclass, "deat", 5) ||
             !strncmp(bclass, "dea", 4) || !strncmp(bclass, "dk", 3) || !strncmp(bclass, "de", 3))
             botclass = CLASS_DEATH_KNIGHT;
-        else if (!strncmp(bclass, "druid", 6) || !strncmp(bclass, "dru", 4) || !strncmp(bclass, "dr", 3))
+        else if (!strncmp(bclass, "delu", 6) || !strncmp(bclass, "dru", 4) || !strncmp(bclass, "dr", 3))
             botclass = CLASS_DRUID;
-        else if (!strncmp(bclass, "hunter", 7) || !strncmp(bclass, "hunt", 5) || !strncmp(bclass, "hun", 4) || !strncmp(bclass, "hu", 3))
+        else if (!strncmp(bclass, "lieren", 7) || !strncmp(bclass, "hunt", 5) || !strncmp(bclass, "hun", 4) || !strncmp(bclass, "hu", 3))
             botclass = CLASS_HUNTER;
-        else if (!strncmp(bclass, "mage", 5) || !strncmp(bclass, "ma", 3))
+        else if (!strncmp(bclass, "fashi", 5) || !strncmp(bclass, "ma", 3))
             botclass = CLASS_MAGE;
-        else if (!strncmp(bclass, "paladin", 8) || !strncmp(bclass, "pal", 4) || !strncmp(bclass, "pa", 3))
+        else if (!strncmp(bclass, "shengqi", 8) || !strncmp(bclass, "pal", 4) || !strncmp(bclass, "pa", 3))
             botclass = CLASS_PALADIN;
-        else if (!strncmp(bclass, "priest", 7) || !strncmp(bclass, "pri", 4) || !strncmp(bclass, "pr", 3))
+        else if (!strncmp(bclass, "mushi", 7) || !strncmp(bclass, "pri", 4) || !strncmp(bclass, "pr", 3))
             botclass = CLASS_PRIEST;
-        else if (!strncmp(bclass, "rogue", 6) || !strncmp(bclass, "rog", 4) || !strncmp(bclass, "ro", 3))
+        else if (!strncmp(bclass, "daozei", 6) || !strncmp(bclass, "rog", 4) || !strncmp(bclass, "ro", 3))
             botclass = CLASS_ROGUE;
-        else if (!strncmp(bclass, "shaman", 7) || !strncmp(bclass, "sham", 5) || !strncmp(bclass, "sha", 4) || !strncmp(bclass, "sh", 3))
+        else if (!strncmp(bclass, "saman", 7) || !strncmp(bclass, "sham", 5) || !strncmp(bclass, "sha", 4) || !strncmp(bclass, "sh", 3))
             botclass = CLASS_SHAMAN;
-        else if (!strncmp(bclass, "warlock", 8) || !strncmp(bclass, "warl", 5) || !strncmp(bclass, "lock", 5))
+        else if (!strncmp(bclass, "shushi", 8) || !strncmp(bclass, "warl", 5) || !strncmp(bclass, "lock", 5))
             botclass = CLASS_WARLOCK;
-        else if (!strncmp(bclass, "warrior", 8) || !strncmp(bclass, "warr", 5))
+        else if (!strncmp(bclass, "zhanshi", 8) || !strncmp(bclass, "warr", 5))
             botclass = CLASS_WARRIOR;
 
         if (botclass == CLASS_NONE)
         {
-            handler->PSendSysMessage("Wrong bot class");
+            handler->PSendSysMessage("　错误的职业　");
             handler->SetSentErrorMessage(true);
             return false;
         }
         else if (botclass == CLASS_DEATH_KNIGHT && owner->getLevel() < 55)
         {
-            handler->PSendSysMessage("Death Knights will not join you until you reach level 55...");
+            handler->PSendSysMessage("　死亡骑士必须达到５５级才可以召唤　");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -457,13 +463,13 @@ public:
         if (owner->GetNpcBotsCount() > bots)
         {
             if (owner->IsInCombat())
-                handler->PSendSysMessage("NpcBot successfully created (%s). Will appear out of combat", owner->GetName().c_str());
+                handler->PSendSysMessage("　机器人成功创建 (%s). 将在战斗结束后出现　", owner->GetName().c_str());
             else
-                handler->PSendSysMessage("NpcBot successfully created (%s).", owner->GetName().c_str());
+                handler->PSendSysMessage("　机器人创建了 (%s).", owner->GetName().c_str());
             handler->SetSentErrorMessage(true);
             return true;
         }
-        handler->PSendSysMessage("NpcBot is NOT created for some reason!");
+        handler->PSendSysMessage("　机器人没有创建成功!");
         handler->SetSentErrorMessage(true);
         return false;
     }

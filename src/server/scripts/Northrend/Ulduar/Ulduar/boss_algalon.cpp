@@ -418,10 +418,9 @@ class boss_algalon : public CreatureScript
 
             void PopulateBlackHoles()
             {   
-                Position pos;
                 for (uint8 i = 1; i<= 8; ++i)
                 {
-                    me->GetNearPosition(pos, urand(15,35), (float)rand_norm() * static_cast<float>(2 * M_PI));
+					Position pos = me->GetNearPosition(urand(15, 35), (float)rand_norm() * static_cast<float>(2 * M_PI));
                     DoSummon(CREATURE_DARK_MATTER,pos,1000);
                 }
             }
@@ -943,10 +942,9 @@ class mob_collapsing_star : public CreatureScript
 
                 exploded = true;
                 Timer = 1500;
-                Position pos;
 
                 me->RemoveAllAuras();
-                me->GetPosition(&pos);
+				Position pos = me->GetPosition();
                 if (me->GetOwnerGUID())
                     me->GetOwner()->SummonCreature(CREATURE_BLACK_HOLE, pos);
 
@@ -1508,8 +1506,7 @@ class spell_algalon_summon_asteroid_stalkers : public SpellScriptLoader
                 SummonPropertiesEntry const* properties = sSummonPropertiesStore.LookupEntry(uint32(GetSpellInfo()->Effects[effIndex].MiscValueB));
                 uint32 duration = uint32(GetSpellInfo()->GetDuration());
 
-                Position pos;
-                caster->GetPosition(&pos);
+				Position pos = caster->GetPosition();
                 if (entry == CREATURE_ALGALON_ASTEROID_2)
                     pos.m_positionZ -= 40.0f; 
                 TempSummon* summon = caster->GetMap()->SummonCreature(entry, pos, properties, duration, caster);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,22 +41,22 @@ class mmaps_commandscript : public CommandScript
 public:
     mmaps_commandscript() : CommandScript("mmaps_commandscript") { }
 
-    ChatCommand* GetCommands() const
+    ChatCommand* GetCommands() const OVERRIDE
     {
         static ChatCommand mmapCommandTable[] =
         {
-            { "path",           SEC_ADMINISTRATOR,     false, &HandleMmapPathCommand,            "", NULL },
-            { "loc",            SEC_ADMINISTRATOR,     false, &HandleMmapLocCommand,             "", NULL },
-            { "loadedtiles",    SEC_ADMINISTRATOR,     false, &HandleMmapLoadedTilesCommand,     "", NULL },
-            { "stats",          SEC_ADMINISTRATOR,     false, &HandleMmapStatsCommand,           "", NULL },
-            { "testarea",       SEC_ADMINISTRATOR,     false, &HandleMmapTestArea,               "", NULL },
-            { NULL,             0,                     false, NULL,                              "", NULL }
+            { "loadedtiles", rbac::RBAC_PERM_COMMAND_MMAP_LOADEDTILES, false, &HandleMmapLoadedTilesCommand, "", NULL },
+            { "loc",         rbac::RBAC_PERM_COMMAND_MMAP_LOC,         false, &HandleMmapLocCommand,         "", NULL },
+            { "path",        rbac::RBAC_PERM_COMMAND_MMAP_PATH,        false, &HandleMmapPathCommand,        "", NULL },
+            { "stats",       rbac::RBAC_PERM_COMMAND_MMAP_STATS,       false, &HandleMmapStatsCommand,       "", NULL },
+            { "testarea",    rbac::RBAC_PERM_COMMAND_MMAP_TESTAREA,    false, &HandleMmapTestArea,           "", NULL },
+            { NULL,          0,                                  false, NULL,                          "", NULL }
         };
 
         static ChatCommand commandTable[] =
         {
-            { "mmap",           SEC_ADMINISTRATOR,     true,  NULL,                 "", mmapCommandTable  },
-            { NULL,             0,                     false, NULL,                              "", NULL }
+            { "mmap", rbac::RBAC_PERM_COMMAND_MMAP, true, NULL, "", mmapCommandTable  },
+            { NULL,   0,                     false, NULL, "", NULL }
         };
         return commandTable;
     }
@@ -127,8 +127,8 @@ public:
         int32 gx = 32 - player->GetPositionX() / SIZE_OF_GRIDS;
         int32 gy = 32 - player->GetPositionY() / SIZE_OF_GRIDS;
 
-        handler->PSendSysMessage("%03u%02i%02i.mmtile", player->GetMapId(), gy, gx);
-        handler->PSendSysMessage("gridloc [%i, %i]", gx, gy);
+        handler->PSendSysMessage("%03u%02i%02i.mmtile", player->GetMapId(), gx, gy);
+        handler->PSendSysMessage("gridloc [%i, %i]", gy, gx);
 
         // calculate navmesh tile location
         dtNavMesh const* navmesh = MMAP::MMapFactory::createOrGetMMapManager()->GetNavMesh(handler->GetSession()->GetPlayer()->GetMapId());
@@ -153,7 +153,11 @@ public:
         // navmesh poly -> navmesh tile location
         dtQueryFilter filter = dtQueryFilter();
         dtPolyRef polyRef = INVALID_POLYREF;
-        navmeshquery->findNearestPoly(location, extents, &filter, &polyRef, NULL);
+        if (dtStatusFailed(navmeshquery->findNearestPoly(location, extents, &filter, &polyRef, NULL)))
+        {
+            handler->PSendSysMessage("Dt     [??,??] (invalid poly, probably no tile loaded)");
+            return true;
+        }
 
         if (polyRef == INVALID_POLYREF)
             handler->PSendSysMessage("Dt     [??, ??] (invalid poly, probably no tile loaded)");
@@ -161,11 +165,16 @@ public:
         {
             dtMeshTile const* tile;
             dtPoly const* poly;
-            navmesh->getTileAndPolyByRef(polyRef, &tile, &poly);
-            if (tile)
-                handler->PSendSysMessage("Dt     [%02i, %02i]", tile->header->x, tile->header->y);
-            else
-                handler->PSendSysMessage("Dt     [??, ??] (no tile loaded)");
+            if (dtStatusSucceed(navmesh->getTileAndPolyByRef(polyRef, &tile, &poly)))
+            {
+                if (tile)
+                {
+                    handler->PSendSysMessage("Dt     [%02i,%02i]", tile->header->x, tile->header->y);
+                    return false;
+                }
+            }
+
+            handler->PSendSysMessage("Dt     [??,??] (no tile loaded)");
         }
 
         return true;

@@ -545,7 +545,7 @@ class boss_lady_deathwhisper : public CreatureScript
             void Summon(uint32 entry, const Position& pos)
             {
                 if (TempSummon* summon = me->SummonCreature(entry, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
-                    summon->AI()->DoCast(summon, SPELL_TELEPORT_VISUAL);
+                    summon->CastSpell(summon, SPELL_TELEPORT_VISUAL);
             }
 
             void SetGUID(uint64 guid, int32 id/* = 0*/) OVERRIDE
@@ -576,8 +576,7 @@ class boss_lady_deathwhisper : public CreatureScript
             {
                 if (spell->Id == SPELL_DARK_MARTYRDOM_T)
                 {
-                    Position pos;
-                    target->GetPosition(&pos);
+                    Position pos = target->GetPosition();
                     if (target->GetEntry() == NPC_CULT_FANATIC)
                         me->SummonCreature(NPC_REANIMATED_FANATIC, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000);
                     else
@@ -890,7 +889,7 @@ class npc_darnavan : public CreatureScript
                 if (me->HasUnitState(UNIT_STATE_CASTING))
                     return;
 
-                if (_canShatter && me->GetVictim() && me->GetVictim()->IsImmunedToDamage(SPELL_SCHOOL_MASK_NORMAL))
+                if (_canShatter && me->GetVictim() && me->EnsureVictim()->IsImmunedToDamage(SPELL_SCHOOL_MASK_NORMAL))
                 {
                     DoCastVictim(SPELL_SHATTERING_THROW);
                     _canShatter = false;

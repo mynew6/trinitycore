@@ -46,6 +46,8 @@
 #include "Transport.h"
 #include "WardenWin.h"
 #include "WardenMac.h"
+#include "HookMgr.h"
+#include "MoveSpline.h"
 
 namespace {
 
@@ -320,6 +322,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                         else if (_player->IsInWorld())
                         {
                             sScriptMgr->OnPacketReceive(m_Socket, WorldPacket(*packet));
+#ifdef ELUNA
+                            if (!sHookMgr->OnPacketReceive(this, *packet))
+                                break;
+#endif
                             (this->*opHandle.handler)(*packet);
                             LogUnprocessedTail(packet);
                         }
@@ -333,6 +339,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                         {
                             // not expected _player or must checked in packet handler
                             sScriptMgr->OnPacketReceive(m_Socket, WorldPacket(*packet));
+#ifdef ELUNA
+                            if (!sHookMgr->OnPacketReceive(this, *packet))
+                                break;
+#endif
                             (this->*opHandle.handler)(*packet);
                             LogUnprocessedTail(packet);
                         }
@@ -345,6 +355,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                         else
                         {
                             sScriptMgr->OnPacketReceive(m_Socket, WorldPacket(*packet));
+#ifdef ELUNA
+                            if (!sHookMgr->OnPacketReceive(this, *packet))
+                                break;
+#endif
                             (this->*opHandle.handler)(*packet);
                             LogUnprocessedTail(packet);
                         }
@@ -363,6 +377,10 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
                             m_playerRecentlyLogout = false;
 
                         sScriptMgr->OnPacketReceive(m_Socket, WorldPacket(*packet));
+#ifdef ELUNA
+                        if (!sHookMgr->OnPacketReceive(this, *packet))
+                            break;
+#endif
                         (this->*opHandle.handler)(*packet);
                         LogUnprocessedTail(packet);
                         break;
@@ -907,6 +925,9 @@ void WorldSession::ReadMovementInfo(WorldPacket &data, MovementInfo* mi)
     //! Cannot fly and fall at the same time
     REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_CAN_FLY | MOVEMENTFLAG_DISABLE_GRAVITY) && mi->HasMovementFlag(MOVEMENTFLAG_FALLING),
         MOVEMENTFLAG_FALLING);
+
+    REMOVE_VIOLATING_FLAGS(mi->HasMovementFlag(MOVEMENTFLAG_SPLINE_ENABLED) &&
+        (!GetPlayer()->movespline->Initialized() || GetPlayer()->movespline->Finalized()), MOVEMENTFLAG_SPLINE_ENABLED);
 
     #undef REMOVE_VIOLATING_FLAGS
 }

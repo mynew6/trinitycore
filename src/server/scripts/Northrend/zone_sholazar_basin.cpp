@@ -1003,7 +1003,7 @@ enum ReconnaissanceFlight
     VIC_SAY_6       = 6,
     PLANE_EMOTE     = 0,
 
-    AURA_ENGINE     = 52255, // Engine on Fire
+    SPELL_ENGINE     = 52255, // Engine on Fire
 
     SPELL_LAND      = 52226, // Land Flying Machine
     SPELL_CREDIT    = 53328 // Land Flying Machine Credit
@@ -1021,7 +1021,14 @@ public:
         void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) OVERRIDE
         {
             if (apply && passenger->GetTypeId() == TYPEID_PLAYER)
+            {
+                /// @workaround - Because accessory gets unmounted when using vehicle_template_accessory.
+                /// When vehicle spawns accessory is mounted to seat 0,but when player mounts
+                /// he uses the same seat (instead of mounting to seat 1) kicking the accessory out.
+                passenger->ChangeSeat(1, false);
+                me->GetVehicleKit()->InstallAccessory(NPC_PILOT, 0, true, TEMPSUMMON_DEAD_DESPAWN, 0);
                 me->GetMotionMaster()->MovePath(NPC_PLANE, false);
+            }
         }
 
         void MovementInform(uint32 type, uint32 id) OVERRIDE
@@ -1054,8 +1061,9 @@ public:
                         pilot->AI()->Talk(VIC_SAY_6);
                         break;
                     case 25:
-                        me->AI()->Talk(PLANE_EMOTE);
-                        me->AI()->DoCast(AURA_ENGINE);
+                        Talk(PLANE_EMOTE);
+                        DoCast(SPELL_ENGINE);
+                        me->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FORCE_MOVEMENT);
                         break;
                 }
         }

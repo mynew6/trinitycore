@@ -63,6 +63,10 @@ struct SqlDbc
             }
         }
     }
+
+private:
+    SqlDbc(SqlDbc const& right) DELETE_MEMBER;
+    SqlDbc& operator=(SqlDbc const& right) DELETE_MEMBER;
 };
 
 template<class T>
@@ -80,10 +84,32 @@ class DBCStorage
 
         T const* LookupEntry(uint32 id) const
         {
+            if (loaded)
+            {
+                typename std::map<uint32, T const*>::const_iterator it = data.find(id);
+                if (it != data.end())
+                    return it->second;
+            }
             return (id >= nCount) ? NULL : indexTable.asT[id];
         }
 
-        uint32  GetNumRows() const { return nCount; }
+        void SetEntry(uint32 id, T* t)
+        {
+            if (!loaded)
+            {
+                for (uint32 i = 0; i < GetNumRows(); ++i)
+                {
+                    T const* node = LookupEntry(i);
+                    if (!node)
+                        continue;
+                    data[i] = node;
+                }
+                loaded = true;
+            }
+            data[id] = t;
+        }
+
+        uint32  GetNumRows() const { return loaded ? data.size() : nCount; }
         char const* GetFormat() const { return fmt; }
         uint32 GetFieldCount() const { return fieldCount; }
 
@@ -260,6 +286,12 @@ class DBCStorage
 
         void Clear()
         {
+            if (loaded)
+            {
+                data.clear();
+                loaded = false;
+            }
+
             if (!indexTable.asT)
                 return;
 
@@ -290,7 +322,12 @@ class DBCStorage
         indexTable;
 
         T* dataTable;
+        std::map<uint32, T const*> data;
+        bool loaded;
         StringPoolList stringPoolList;
+
+        DBCStorage(DBCStorage const& right) DELETE_MEMBER;
+        DBCStorage& operator=(DBCStorage const& right) DELETE_MEMBER;
 };
 
 #endif

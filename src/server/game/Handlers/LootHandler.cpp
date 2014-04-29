@@ -30,6 +30,7 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "HookMgr.h"
 
 void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 {
@@ -203,6 +204,9 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
             SendPacket(&data);
         }
 
+#ifdef ELUNA
+        sHookMgr->OnLootMoney(player, loot->gold);
+#endif
         loot->gold = 0;
 
         // Delete the money loot record from the DB
@@ -297,17 +301,7 @@ void WorldSession::DoLootRelease(uint64 lguid)
 
             // if the round robin player release, reset it.
             if (player->GetGUID() == loot->roundRobinPlayer)
-            {
-                if (Group* group = player->GetGroup())
-                {
-                    if (group->GetLootMethod() != MASTER_LOOT)
-                    {
-                        loot->roundRobinPlayer = 0;
-                    }
-                }
-                else
-                    loot->roundRobinPlayer = 0;
-            }
+                loot->roundRobinPlayer = 0;
         }
     }
     else if (IS_CORPSE_GUID(lguid))        // ONLY remove insignia at BG
@@ -376,19 +370,15 @@ void WorldSession::DoLootRelease(uint64 lguid)
             // if the round robin player release, reset it.
             if (player->GetGUID() == loot->roundRobinPlayer)
             {
+                loot->roundRobinPlayer = 0;
+
                 if (Group* group = player->GetGroup())
                 {
-                    if (group->GetLootMethod() != MASTER_LOOT)
-                    {
-                        loot->roundRobinPlayer = 0;
-                        group->SendLooter(creature, NULL);
+                    group->SendLooter(creature, NULL);
 
-                        // force update of dynamic flags, otherwise other group's players still not able to loot.
-                        creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
-                    }
+                    // force update of dynamic flags, otherwise other group's players still not able to loot.
+                    creature->ForceValuesUpdateAtIndex(UNIT_DYNAMIC_FLAGS);
                 }
-                else
-                    loot->roundRobinPlayer = 0;
             }
         }
     }
@@ -404,7 +394,7 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recvData)
 
     recvData >> lootguid >> slotid >> target_playerguid;
 
-    if (!_player->GetGroup() || _player->GetGroup()->GetLooterGuid() != _player->GetGUID())
+    if (!_player->GetGroup() || _player->GetGroup()->GetMasterLooterGuid() != _player->GetGUID() || _player->GetGroup()->GetLootMethod() != MASTER_LOOT)
     {
         _player->SendLootRelease(GetPlayer()->GetLootGUID());
         return;
@@ -424,7 +414,6 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recvData)
         TC_LOG_INFO("loot", "MasterLootItem: Player %s tried to give an item to ineligible player %s !", GetPlayer()->GetName().c_str(), target->GetName().c_str());
         return;
     }
-
 
     Loot* loot = NULL;
 
@@ -478,7 +467,9 @@ void WorldSession::HandleLootMasterGiveOpcode(WorldPacket& recvData)
     target->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_ITEM, item.itemid, item.count);
     target->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_TYPE, loot->loot_type, item.count);
     target->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_EPIC_ITEM, item.itemid, item.count);
-
+#ifdef ELUNA
+    sHookMgr->OnLootItem(target, newitem, item.count, lootguid);
+#endif
     // mark as looted
     item.count=0;
     item.is_looted=true;

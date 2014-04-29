@@ -37,7 +37,7 @@
 #include "ScriptMgr.h"
 #include "CreatureAI.h"
 #include "SpellInfo.h"
-
+#include "HookMgr.h"
 //Bot
 #include "bothelper.h"
 

@@ -235,8 +235,7 @@ class instance_stratholme : public InstanceMapScript
                                 EncounterState[0] = data;
                                 if (Creature* ysidaTrigger = instance->GetCreature(ysidaTriggerGUID))
                                 {
-                                    Position ysidaPos;
-                                    ysidaTrigger->GetPosition(&ysidaPos);
+                                    Position ysidaPos = ysidaTrigger->GetPosition();
                                     ysidaTrigger->SummonCreature(NPC_YSIDA, ysidaPos, TEMPSUMMON_TIMED_DESPAWN, 1800000);
                                 }
                                 events.CancelEvent(EVENT_BARON_RUN);
@@ -310,6 +309,15 @@ class instance_stratholme : public InstanceMapScript
                         {
                             HandleGameObject(ziggurat4GUID, false);
                             HandleGameObject(ziggurat5GUID, false);
+                        }
+                        if (data == DONE || data == NOT_STARTED)
+                        {
+                            HandleGameObject(ziggurat4GUID, true);
+                            HandleGameObject(ziggurat5GUID, true);
+                        }
+                        if (data == DONE)
+                        {
+                            HandleGameObject(portGauntletGUID, true);
                             if (GetData(TYPE_BARON_RUN) == IN_PROGRESS)
                             {
                                 DoRemoveAurasDueToSpellOnPlayers(SPELL_BARON_ULTIMATUM);
@@ -318,18 +326,13 @@ class instance_stratholme : public InstanceMapScript
                                     for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                                         if (Player* player = itr->GetSource())
                                             if (player->GetQuestStatus(QUEST_DEAD_MAN_PLEA) == QUEST_STATUS_INCOMPLETE)
+                                            {
                                                 player->AreaExploredOrEventHappens(QUEST_DEAD_MAN_PLEA);
-
+                                                player->KilledMonsterCredit(NPC_YSIDA);
+                                            }
                                 SetData(TYPE_BARON_RUN, DONE);
                             }
                         }
-                        if (data == DONE || data == NOT_STARTED)
-                        {
-                            HandleGameObject(ziggurat4GUID, true);
-                            HandleGameObject(ziggurat5GUID, true);
-                        }
-                        if (data == DONE)
-                            HandleGameObject(portGauntletGUID, true);
                         EncounterState[5] = data;
                         break;
                     case TYPE_SH_AELMAR:

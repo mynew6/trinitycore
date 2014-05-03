@@ -166,7 +166,7 @@ public:
                     break;
                 case NPC_JAINA_PART1:
                     if (uiTeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_SYLVANAS_PART1, HORDE);
+                        creature->UpdateEntry(NPC_SYLVANAS_PART1);
                     uiJainaPart1 = creature->GetGUID();
                     uiSylvanasPart1 = creature->GetGUID();
                     break;
@@ -177,7 +177,7 @@ public:
                     break;
                 case NPC_JAINA_OUTRO:
                     if (uiTeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_SYLVANA_OUTRO, HORDE);
+                        creature->UpdateEntry(NPC_SYLVANA_OUTRO);
                     creature->SetHealth(252000);
                     uiLider = creature->GetGUID();
                     break;
@@ -488,7 +488,7 @@ public:
             return saveStream.str();
         }
 
-        void Load(const char* in) OVERRIDE
+        void Load(const char* in) override
         {
             if (!in)
             {

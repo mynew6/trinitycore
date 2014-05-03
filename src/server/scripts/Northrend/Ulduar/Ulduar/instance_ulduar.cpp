@@ -123,7 +123,7 @@ class instance_ulduar : public InstanceMapScript
             bool conSpeedAtory;
             bool Unbroken;
 
-            void Initialize() OVERRIDE
+            void Initialize() override
             {
                 SetBossNumber(MAX_ENCOUNTER);
                 LoadDoorData(doorData);
@@ -212,7 +212,7 @@ class instance_ulduar : public InstanceMapScript
                 }
             }
 
-            bool CheckAchievementCriteriaMeet(uint32 criteria_id, Player const* /*source*/, Unit const* /*target = NULL*/, uint32 /*miscvalue1 = 0*/) OVERRIDE
+            bool CheckAchievementCriteriaMeet(uint32 criteria_id, Player const* /*source*/, Unit const* /*target = NULL*/, uint32 /*miscvalue1 = 0*/) override
             {
                 switch (criteria_id)
                 {
@@ -312,7 +312,7 @@ class instance_ulduar : public InstanceMapScript
                 return false;
             }
 
-            void OnPlayerEnter(Player* player) OVERRIDE
+            void OnPlayerEnter(Player* player) override
             {
                 if (!TeamInInstance)
                     TeamInInstance = player->GetTeam();
@@ -325,13 +325,13 @@ class instance_ulduar : public InstanceMapScript
                 }
             }  
 
-            void FillInitialWorldStates(WorldPacket& data) OVERRIDE
+            void FillInitialWorldStates(WorldPacket& data) override
             {
                 data << uint32(WORLDSTATE_SHOW_TIMER)            << uint32(SignalTimerState == IN_PROGRESS);
                 data << uint32(WORLDSTATE_ALGALON_TIMER)         << uint32(SignalTimerMinutes ? SignalTimerMinutes : 60);
             }
 		
-            void OnCreatureCreate(Creature* creature) OVERRIDE
+            void OnCreatureCreate(Creature* creature) override
             {
                 if (!TeamInInstance)
                 {
@@ -463,35 +463,35 @@ class instance_ulduar : public InstanceMapScript
                     // Hodir's Helper NPCs
                     case NPC_EIVI_NIGHTFEATHER:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_TOR_GREYCLOUD, HORDE);
+                            creature->UpdateEntry(NPC_TOR_GREYCLOUD);
                         break;
                     case NPC_ELLIE_NIGHTFEATHER:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_KAR_GREYCLOUD, HORDE);
+                            creature->UpdateEntry(NPC_KAR_GREYCLOUD);
                         break;
                     case NPC_ELEMENTALIST_MAHFUUN:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_SPIRITWALKER_TARA, HORDE);
+                            creature->UpdateEntry(NPC_SPIRITWALKER_TARA);
                         break;
                     case NPC_ELEMENTALIST_AVUUN:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_SPIRITWALKER_YONA, HORDE);
+                            creature->UpdateEntry(NPC_SPIRITWALKER_YONA);
                         break;
                     case NPC_MISSY_FLAMECUFFS:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_AMIRA_BLAZEWEAVER, HORDE);
+                            creature->UpdateEntry(NPC_AMIRA_BLAZEWEAVER);
                         break;
                     case NPC_SISSY_FLAMECUFFS:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_VEESHA_BLAZEWEAVER, HORDE);
+                            creature->UpdateEntry(NPC_VEESHA_BLAZEWEAVER);
                         break;
                     case NPC_FIELD_MEDIC_PENNY:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_BATTLE_PRIEST_ELIZA, HORDE);
+                            creature->UpdateEntry(NPC_BATTLE_PRIEST_ELIZA);
                         break;
                     case NPC_FIELD_MEDIC_JESSI:
                         if (TeamInInstance == HORDE)
-                            creature->UpdateEntry(NPC_BATTLE_PRIEST_GINA, HORDE);
+                            creature->UpdateEntry(NPC_BATTLE_PRIEST_GINA);
                         break;
                 }
 
@@ -664,7 +664,7 @@ class instance_ulduar : public InstanceMapScript
                 }
             }
 
-            void OnGameObjectRemove(GameObject* gameObject) OVERRIDE
+            void OnGameObjectRemove(GameObject* gameObject) override
             {
                 switch (gameObject->GetEntry())
                 {
@@ -701,7 +701,7 @@ class instance_ulduar : public InstanceMapScript
                 }
             }
 
-            void ProcessEvent(WorldObject* /*gameObject*/, uint32 eventId) OVERRIDE
+            void ProcessEvent(WorldObject* /*gameObject*/, uint32 eventId) override
             {
                 // Flame Leviathan's Tower Event triggers
                 Creature* FlameLeviathan = instance->GetCreature(LeviathanGUID);
@@ -724,7 +724,7 @@ class instance_ulduar : public InstanceMapScript
             }
 
 
-            bool SetBossState(uint32 type, EncounterState state) OVERRIDE
+            bool SetBossState(uint32 type, EncounterState state) override
             {
                 if (!InstanceScript::SetBossState(type, state))
                     return false;
@@ -1036,7 +1036,7 @@ class instance_ulduar : public InstanceMapScript
                 return 0;
             }
 
-            std::string GetSaveData() OVERRIDE
+            std::string GetSaveData() override
             {
                 OUT_SAVE_INST_DATA;
 
@@ -1047,7 +1047,7 @@ class instance_ulduar : public InstanceMapScript
                 return saveStream.str();
             }
 
-            void Load(char const* strIn) OVERRIDE
+            void Load(char const* strIn) override
             {
                 if (!strIn)
                 {
@@ -1093,7 +1093,7 @@ class instance_ulduar : public InstanceMapScript
 
                 OUT_LOAD_INST_DATA_COMPLETE;
             }
-            void Update(uint32 diff) OVERRIDE
+            void Update(uint32 diff) override
             {
                 if (SignalTimerState == IN_PROGRESS)
                 {

@@ -33,7 +33,7 @@ enum Spells
     SPELL_HAMMER_JUSTICE        = 66863,
     SPELL_HAMMER_JUSTICE_STUN   = 66940,
     SPELL_HAMMER_RIGHTEOUS      = 66867,
-    SPELL_HAMMER_OVERRIDE_BAR   = 66904, // overrides players cast bar
+    SPELL_HAMMER_override_BAR   = 66904, // overrides players cast bar
     SPELL_HAMMER_THROWBACK_DMG  = 66905, // the hammer that is thrown back by the player
     SPELL_RADIANCE              = 66935,
     SPELL_VENGEANCE             = 66865,
@@ -171,7 +171,7 @@ class spell_eadric_hoj : public SpellScriptLoader
                     if (!GetHitUnit()->HasAura(SPELL_HAMMER_JUSTICE_STUN)) // FIXME: Has Catched Hammer...
                     {
                         SetHitDamage(0);
-                        GetHitUnit()->AddAura(SPELL_HAMMER_OVERRIDE_BAR, GetHitUnit());
+                        GetHitUnit()->AddAura(SPELL_HAMMER_override_BAR, GetHitUnit());
                     }
 
             }
@@ -1039,7 +1039,7 @@ class spell_paletress_summon_memory : public SpellScriptLoader
         {
             PrepareSpellScript(spell_paletress_summon_memory_SpellScript);
 
-            bool Validate(SpellInfo const* /*spellInfo*/) OVERRIDE
+            bool Validate(SpellInfo const* /*spellInfo*/) override
             {
                 for (uint8 i = 0; i < 25; ++i)
                     if (!sSpellMgr->GetSpellInfo(memorySpellId[i]))
@@ -1062,14 +1062,14 @@ class spell_paletress_summon_memory : public SpellScriptLoader
                 GetHitUnit()->CastSpell(GetHitUnit(), memorySpellId[urand(0, 24)], true, NULL, NULL, GetCaster()->GetGUID());
             }
 
-            void Register() OVERRIDE
+            void Register() override
             {
                 OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_paletress_summon_memory_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
                 OnEffectHitTarget += SpellEffectFn(spell_paletress_summon_memory_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
             }
         };
 
-        SpellScript* GetSpellScript() const OVERRIDE
+        SpellScript* GetSpellScript() const override
         {
             return new spell_paletress_summon_memory_SpellScript();
         }

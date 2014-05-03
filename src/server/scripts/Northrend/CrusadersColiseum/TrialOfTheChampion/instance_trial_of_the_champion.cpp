@@ -63,7 +63,7 @@ public:
 
         bool bDone;
 
-        void Initialize() OVERRIDE
+        void Initialize() override
         {
             uiMovementDone = 0;
             uiGrandChampionsDeaths = 0;
@@ -91,7 +91,7 @@ public:
             memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
         }
 
-        bool IsEncounterInProgress() const OVERRIDE
+        bool IsEncounterInProgress() const override
         {
             for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
             {
@@ -102,7 +102,7 @@ public:
             return false;
         }
 
-        void OnCreatureCreate(Creature* creature) OVERRIDE
+        void OnCreatureCreate(Creature* creature) override
         {
             Map::PlayerList const &players = instance->GetPlayers();
 
@@ -117,85 +117,85 @@ public:
                 // Gran Champions
                 case VEHICLE_MOKRA_SKILLCRUSHER_MOUNT:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_MARSHAL_JACOB_ALERIUS_MOUNT, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_MARSHAL_JACOB_ALERIUS_MOUNT);
                     break;
                 case NPC_MOKRA:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_JACOB, ALLIANCE);
+                        creature->UpdateEntry(NPC_JACOB);
                     break;
                 case VEHICLE_ERESSEA_DAWNSINGER_MOUNT:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_AMBROSE_BOLTSPARK_MOUNT, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_AMBROSE_BOLTSPARK_MOUNT);
                     break;
                 case NPC_ERESSEA:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_AMBROSE, ALLIANCE);
+                        creature->UpdateEntry(NPC_AMBROSE);
                     break;
                 case VEHICLE_RUNOK_WILDMANE_MOUNT:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_COLOSOS_MOUNT, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_COLOSOS_MOUNT);
                     break;
                 case NPC_RUNOK:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_COLOSOS, ALLIANCE);
+                        creature->UpdateEntry(NPC_COLOSOS);
                     break;
                 case VEHICLE_ZUL_TORE_MOUNT:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_EVENSONG_MOUNT, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_EVENSONG_MOUNT);
                     break;
                 case NPC_ZULTORE:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_JAELYNE, ALLIANCE);
+                        creature->UpdateEntry(NPC_JAELYNE);
                     break;
                 case VEHICLE_DEATHSTALKER_VESCERI_MOUNT:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_LANA_STOUTHAMMER_MOUNT, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_LANA_STOUTHAMMER_MOUNT);
                     break;
                 case NPC_VISCERI:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_LANA, ALLIANCE);
+                        creature->UpdateEntry(NPC_LANA);
                     break;
                 // Faction champions vehicles
                 case VEHICLE_FORSAKE_WARHORSE:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_IRONFORGE_RAM, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_IRONFORGE_RAM);
                     break;
                 case VEHICLE_THUNDER_BLUFF_KODO:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_EXODAR_ELEKK, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_EXODAR_ELEKK);
                     break;                
                 case VEHICLE_ORGRIMMAR_WOLF:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_STORMWIND_STEED, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_STORMWIND_STEED);
                     break;                
                 case VEHICLE_SILVERMOON_HAWKSTRIDER:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_GNOMEREGAN_MECHANOSTRIDER, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_GNOMEREGAN_MECHANOSTRIDER);
                     break;
                 case VEHICLE_DARKSPEAR_RAPTOR:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(VEHICLE_DARNASSIA_NIGHTSABER, ALLIANCE);
+                        creature->UpdateEntry(VEHICLE_DARNASSIA_NIGHTSABER);
                     break;
                 // Faction champios
                 case NPC_ORGRIMAR_CHAMPION:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_STORMWIND_CHAMPION, ALLIANCE);
+                        creature->UpdateEntry(NPC_STORMWIND_CHAMPION);
                     break;
                 case NPC_SILVERMOON_CHAMPION:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_GNOMERAGN_CHAMPION, ALLIANCE);
+                        creature->UpdateEntry(NPC_GNOMERAGN_CHAMPION);
                     break;
                 case NPC_THUNDER_CHAMPION:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_EXODAR_CHAMPION, ALLIANCE);
+                        creature->UpdateEntry(NPC_EXODAR_CHAMPION);
                     break;
                 case NPC_TROLL_CHAMPION:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_DRNASSUS_CHAMPION, ALLIANCE);
+                        creature->UpdateEntry(NPC_DRNASSUS_CHAMPION);
                     break;
                 case NPC_UNDERCITY_CHAMPION:
                     if (TeamInInstance == HORDE)
-                        creature->UpdateEntry(NPC_IRONFORGE_CHAMPION, ALLIANCE);
+                        creature->UpdateEntry(NPC_IRONFORGE_CHAMPION);
                     break;
 
                 // Coliseum Announcer || Just NPC_JAEREN must be spawned.
@@ -204,7 +204,7 @@ public:
                     break;
                 case NPC_JAEREN:
                     if (TeamInInstance == ALLIANCE)
-                        creature->UpdateEntry(NPC_ARELAS, ALLIANCE);
+                        creature->UpdateEntry(NPC_ARELAS);
                     uiAnnouncerGUID = creature->GetGUID();
                     break;
                 case VEHICLE_ARGENT_WARHORSE:
@@ -220,7 +220,7 @@ public:
             }
         }
 
-        void OnGameObjectCreate(GameObject* go) OVERRIDE
+        void OnGameObjectCreate(GameObject* go) override
         {
             switch(go->GetEntry())
             {
@@ -384,7 +384,7 @@ public:
             }
         }
 
-        std::string GetSaveData() OVERRIDE
+        std::string GetSaveData() override
         {
             OUT_SAVE_INST_DATA;
 
@@ -403,7 +403,7 @@ public:
             return str_data;
         }
 
-        void Load(const char* in) OVERRIDE
+        void Load(const char* in) override
         {
             if (!in)
             {

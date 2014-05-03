@@ -17,7 +17,7 @@ class Airen_chapter1 : public CreatureScript
 public:
     Airen_chapter1() : CreatureScript("npc_Airen_qI") { }
 
-    CreatureAI* GetAI(Creature* creature) const OVERRIDE
+    CreatureAI* GetAI(Creature* creature) const override
     {
         return new Airen_AI(creature);
     }

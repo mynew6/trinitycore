@@ -484,7 +484,9 @@ void GameObject::Update(uint32 diff)
                         // Battleground gameobjects have data2 == 0 && data5 == 3
                         isBattlegroundTrap = true;
                         radius = 3.f;
-                    } else {
+                    }
+                    else
+                    {
                         isBattlegroundTrap = false;
                         radius = goInfo->trap.diameter / 2.f;
                     }
@@ -577,6 +579,7 @@ void GameObject::Update(uint32 diff)
                         }
                         else m_groupLootTimer -= diff;
                     }
+                  break;
                 case GAMEOBJECT_TYPE_TRAP:
                 {
                     GameObjectTemplate const* goInfo = GetGOInfo();

@@ -33,7 +33,6 @@
 #include "GameObjectAI.h"
 #include "SpellAuraEffects.h"
 #include "Player.h"
-#include "../../scripts/Custom/Transmogrification.h"
 
 void WorldSession::HandleClientCastFlags(WorldPacket& recvPacket, uint8 castFlags, SpellCastTargets& targets)
 {
@@ -569,36 +568,6 @@ void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
     if (!unit)
         return;
 
-    //bot
-    if (unit->ToCreature())
-    {
-        CreatureOutfitContainer const& outfits = sObjectMgr->GetCreatureOutfitMap();
-        CreatureOutfitContainer::const_iterator it = outfits.find(unit->GetEntry());
-        if (it != outfits.end())
-        {
-            WorldPacket data(SMSG_MIRRORIMAGE_DATA, 68);
-            data << uint64(guid);
-            data << uint32(unit->GetNativeDisplayId()); // displayId
-            data << uint8(it->second.race);             // race
-            data << uint8(it->second.gender);           // gender
-            data << uint8(unit->getClass());            // class
-            data << uint8(it->second.skin);             // skin
-            data << uint8(it->second.face);             // face
-            data << uint8(it->second.hair);             // hair
-            data << uint8(it->second.haircolor);        // haircolor
-            data << uint8(it->second.facialhair);       // facialhair
-            data << uint32(0);                          // guildId
-
-            // item displays
-            for (uint8 i = 0; i != MAX_CREATURE_OUTFIT_DISPLAYS; ++i)
-                data << uint32(it->second.outfit[i]);
-
-            SendPacket(&data);
-            return;
-        }
-    }
-    //end bot
-
     if (!unit->HasAuraType(SPELL_AURA_CLONE_CASTER))
         return;
 
@@ -648,12 +617,7 @@ void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
             else if (*itr == EQUIPMENT_SLOT_BACK && player->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_HIDE_CLOAK))
                 data << uint32(0);
             else if (Item const* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, *itr))
-            {
-                if (uint32 entry = sTransmogrification->GetFakeEntry(item->GetGUID()))
-                    data << uint32(sObjectMgr->GetItemTemplate(entry)->DisplayInfoID);
-                else
-                    data << uint32(item->GetTemplate()->DisplayInfoID);
-            }
+                data << uint32(item->GetTemplate()->DisplayInfoID);
             else
                 data << uint32(0);
         }

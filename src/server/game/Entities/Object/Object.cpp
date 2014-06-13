@@ -51,6 +51,7 @@
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
 #include "Chat.h"
+#include "LuaEngine.h"
 
 uint32 GuidHigh2TypeId(uint32 guid_hi)
 {
@@ -87,6 +88,10 @@ Object::Object() : m_PackGUID(sizeof(uint64)+1)
 
 WorldObject::~WorldObject()
 {
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
+
     // this may happen because there are many !create/delete
     if (IsWorldObject() && m_currMap)
     {
@@ -102,6 +107,10 @@ WorldObject::~WorldObject()
 
 Object::~Object()
 {
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
+
     if (IsInWorld())
     {
         TC_LOG_FATAL("misc", "Object::~Object - guid=" UI64FMTD ", typeid=%d, entry=%u deleted but still in world!!", GetGUID(), GetTypeId(), GetEntry());
@@ -2187,11 +2196,6 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
             summon = new Puppet(properties, summoner);
             break;
         case UNIT_MASK_TOTEM:
-            //npcbot: totem emul step 1
-            if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->GetIAmABot())
-                summon = new Totem(properties, summoner->ToCreature()->GetBotOwner());
-            else
-            //end npcbot
             summon = new Totem(properties, summoner);
             break;
         case UNIT_MASK_MINION:
@@ -2212,12 +2216,6 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     summon->InitStats(duration);
     AddToMap(summon->ToCreature());
     summon->InitSummon();
-
-    //npcbot: totem emul step 2
-    if (mask == UNIT_MASK_TOTEM)
-        if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->GetIAmABot())
-            summoner->ToCreature()->OnBotSummon(summon);
-    //end npcbot
 
     //ObjectAccessor::UpdateObjectVisibility(summon);
 
@@ -2501,9 +2499,11 @@ void WorldObject::GetNearPoint(WorldObject const* /*searcher*/, float &x, float 
     // if detection disabled, return first point
     if (!sWorld->getBoolConfig(CONFIG_DETECT_POS_COLLISION))
         return;
+
     // return if the point is already in LoS
     if (IsWithinLOS(x, y, z))
         return;
+
     // remember first point
     float first_x = x;
     float first_y = y;

@@ -80,6 +80,7 @@
 #include "CalendarMgr.h"
 #include "BattlefieldMgr.h"
 #include "TransportMgr.h"
+#include "LuaEngine.h"
 
 ACE_Atomic_Op<ACE_Thread_Mutex, bool> World::m_stopEvent = false;
 uint8 World::m_ExitCode = SHUTDOWN_EXIT_CODE;
@@ -1254,7 +1255,7 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_PACKET_SPOOF_BANDURATION] = sConfigMgr->GetIntDefault("PacketSpoof.BanDuration", 86400);
 
     m_int_configs[CONFIG_BIRTHDAY_TIME] = sConfigMgr->GetIntDefault("BirthdayTime", 1222964635);
-    
+
     // call ScriptMgr if we're reloading the configuration
     if (reload)
         sScriptMgr->OnConfigLoad(reload);
@@ -1438,9 +1439,6 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Loading Creature templates...");
     sObjectMgr->LoadCreatureTemplates();
-
-    TC_LOG_INFO("server.loading", "Loading Creature template outfits...");     // must be after LoadCreatureTemplates
-    sObjectMgr->LoadCreatureOutfits();
 
     TC_LOG_INFO("server.loading", "Loading Equipment templates...");           // must be after LoadCreatureTemplates
     sObjectMgr->LoadEquipmentTemplates();
@@ -2279,7 +2277,7 @@ bool World::SendZoneMessage(uint32 zone, WorldPacket* packet, WorldSession* self
 {
     bool foundPlayerToSend = false;
     SessionMap::const_iterator itr;
-    
+
     for (itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
     {
         if (itr->second &&
@@ -2293,7 +2291,7 @@ bool World::SendZoneMessage(uint32 zone, WorldPacket* packet, WorldSession* self
             foundPlayerToSend = true;
         }
     }
-    
+
     return foundPlayerToSend;
 }
 
@@ -3173,7 +3171,7 @@ void World::UpdateCharacterNameData(uint32 guid, std::string const& name, uint8 
 
     if (race != RACE_NONE)
         itr->second.m_race = race;
-        
+
     WorldPacket data(SMSG_INVALIDATE_PLAYER, 8);
     data << MAKE_NEW_GUID(guid, 0, HIGHGUID_PLAYER);
     SendGlobalMessage(&data);

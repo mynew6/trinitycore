@@ -2482,7 +2482,7 @@ public:
         player->StopCastingBindSight();
         return true;
     }
-    
+
     static bool HandleMailBoxCommand(ChatHandler* handler, char const* /*args*/)
     {
         Player* player = handler->GetSession()->GetPlayer();

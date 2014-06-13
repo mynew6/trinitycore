@@ -5,7 +5,9 @@
 */
 
 // Eluna
+#include "HookMgr.h"
 #include "LuaEngine.h"
+#include "Includes.h"
 // Methods
 #include "GlobalMethods.h"
 #include "ObjectMethods.h"
@@ -30,7 +32,7 @@
 void RegisterGlobals(lua_State* L)
 {
     // Hooks
-    lua_register(L, "RegisterPacketEvent", &LuaGlobalFunctions::RegisterPacketEvent);                       // RegisterPacketEvent(opcodeID, function)
+    lua_register(L, "RegisterPacketEvent", &LuaGlobalFunctions::RegisterPacketEvent);                       // RegisterPacketEvent(opcodeID, event, function)
     lua_register(L, "RegisterServerEvent", &LuaGlobalFunctions::RegisterServerEvent);                       // RegisterServerEvent(event, function)
     lua_register(L, "RegisterPlayerEvent", &LuaGlobalFunctions::RegisterPlayerEvent);                       // RegisterPlayerEvent(event, function)
     lua_register(L, "RegisterGuildEvent", &LuaGlobalFunctions::RegisterGuildEvent);                         // RegisterGuildEvent(event, function)
@@ -64,6 +66,7 @@ void RegisterGlobals(lua_State* L)
     lua_register(L, "GetGUIDLow", &LuaGlobalFunctions::GetGUIDLow);                                         // GetGUIDLow(guid) - Returns GUIDLow (uint32) from guid (uint64 as string) UNDOCUMENTED
     lua_register(L, "GetGUIDType", &LuaGlobalFunctions::GetGUIDType);                                       // GetGUIDType(guid) - Returns Type (uint32) from guid (uint64 as string) UNDOCUMENTED
     lua_register(L, "GetGUIDEntry", &LuaGlobalFunctions::GetGUIDEntry);                                     // GetGUIDEntry(guid) - Returns Entry (uint32) from guid (uint64 as string), may be always 0 UNDOCUMENTED
+    lua_register(L, "GetAreaName", &LuaGlobalFunctions::GetAreaName);                                       // GetAreaName(area or zone ID[, locale]) - Returns area or zone (string) name by area or zone ID. Locale is optional (Default = 0 (enUS))
     lua_register(L, "bit_not", &LuaGlobalFunctions::bit_not);                                               // bit_not(a) - Returns ~a UNDOCUMENTED
     lua_register(L, "bit_xor", &LuaGlobalFunctions::bit_xor);                                               // bit_xor(a, b) - Returns a ^ b UNDOCUMENTED
     lua_register(L, "bit_rshift", &LuaGlobalFunctions::bit_rshift);                                         // bit_rshift(a, b) - Returns a >> b UNDOCUMENTED
@@ -74,7 +77,7 @@ void RegisterGlobals(lua_State* L)
     lua_register(L, "GetMapById", &LuaGlobalFunctions::GetMapById);                                         // GetMapById(mapId, instance) - Returns map object of id specified. UNDOCUMENTED
 
     // Other
-    // lua_register(L, "ReloadEluna", &LuaGlobalFunctions::ReloadEluna);                                    // ReloadEluna() - Reload's Eluna engine. Returns true if reload succesful.
+    lua_register(L, "ReloadEluna", &LuaGlobalFunctions::ReloadEluna);                                       // ReloadEluna() - Reload's Eluna engine.
     lua_register(L, "SendWorldMessage", &LuaGlobalFunctions::SendWorldMessage);                             // SendWorldMessage(msg) - Sends a broadcast message to everyone
     lua_register(L, "WorldDBQuery", &LuaGlobalFunctions::WorldDBQuery);                                     // WorldDBQuery(sql) - Executes given SQL query to world database instantly and returns a QueryResult object
     lua_register(L, "WorldDBExecute", &LuaGlobalFunctions::WorldDBExecute);                                 // WorldDBExecute(sql) - Executes given SQL query to world database (not instant)
@@ -291,7 +294,7 @@ ElunaRegister<Unit> UnitMethods[] =
     { "IsTaxi", &LuaUnit::IsTaxi },                                   // :IsTaxi()
     { "IsSpiritHealer", &LuaUnit::IsSpiritHealer },                   // :IsSpiritHealer()
     { "IsSpiritGuide", &LuaUnit::IsSpiritGuide },                     // :IsSpiritGuide()
-    { "IsTabardDesigner", &LuaUnit::IsTabardDesigner },               // :IsSpiritGuide()
+    { "IsTabardDesigner", &LuaUnit::IsTabardDesigner },               // :IsTabardDesigner()
     { "IsServiceProvider", &LuaUnit::IsServiceProvider },             // :IsServiceProvider()
     { "IsSpiritService", &LuaUnit::IsSpiritService },                 // :IsSpiritService()
     { "HealthBelowPct", &LuaUnit::HealthBelowPct },                   // :HealthBelowPct(int32 pct)
@@ -318,9 +321,9 @@ ElunaRegister<Unit> UnitMethods[] =
 #endif
 
     // Other
-    { "RegisterEvent", &LuaUnit::RegisterEvent },                     // :RegisterEvent(function, delay, calls)
-    { "RemoveEventById", &LuaUnit::RemoveEventById },                 // :RemoveEventById(eventID)
-    { "RemoveEvents", &LuaUnit::RemoveEvents },                       // :RemoveEvents()
+    { "RegisterEvent", &LuaUnit::RegisterEvent },                     // :RegisterEvent(function, delay, repeats) - The timer ticks if this unit is visible to someone. The function is called with arguments (eventid, delay, repeats, unit) after the time has passed if the unit exists. Returns EventId
+    { "RemoveEventById", &LuaUnit::RemoveEventById },                 // :RemoveEventById(eventID) - Removes a Registered (timed) event by it's ID.
+    { "RemoveEvents", &LuaUnit::RemoveEvents },                       // :RemoveEvents() - Removes all registered timed events
     { "AddAura", &LuaUnit::AddAura },                                 // :AddAura(spellId, target) - Adds an aura to the specified target
     { "RemoveAura", &LuaUnit::RemoveAura },                           // :RemoveAura(spellId[, casterGUID]) - Removes an aura from the unit by the spellId, casterGUID(Original caster) is optional
     { "RemoveAllAuras", &LuaUnit::RemoveAllAuras },                   // :RemoveAllAuras() - Removes all the unit's auras
@@ -334,7 +337,7 @@ ElunaRegister<Unit> UnitMethods[] =
     { "CastSpellAoF", &LuaUnit::CastSpellAoF },                       // :CastSpellAoF(x, y, z, spellID[, triggered]) - Casts the spell on coordinates, if triggered is false has mana cost and cast time
     { "PlayDirectSound", &LuaUnit::PlayDirectSound },                 // :PlayDirectSound(soundId, player) - Unit plays soundID to player, or everyone around if no player
     { "PlayDistanceSound", &LuaUnit::PlayDistanceSound },             // :PlayDistanceSound(soundId, player) - Unit plays soundID to player, or everyone around if no player. The sound fades the further you are
-    // {"Kill", &LuaUnit::Kill},                                    // :Kill(target, durabilityLoss) - Unit kills the target. Durabilityloss is true by default
+    { "Kill", &LuaUnit::Kill },                                       // :Kill(target, durabilityLoss) - Unit kills the target. Durabilityloss is true by default
     { "StopSpellCast", &LuaUnit::StopSpellCast },                     // :StopSpellCast(spellId(optional)) - Stops the unit from casting a spell. If a spellId is defined, it will stop that unit from casting that spell
     { "InterruptSpell", &LuaUnit::InterruptSpell },                   // :InterruptSpell(spellType, delayed(optional)) - Interrupts the unit's spell by the spellType. If delayed is true it will skip if the spell is delayed.
     { "SendChatMessageToPlayer", &LuaUnit::SendChatMessageToPlayer }, // :SendChatMessageToPlayer(type, lang, msg, target) - Unit sends a chat message to the given target player
@@ -367,6 +370,8 @@ ElunaRegister<Unit> UnitMethods[] =
     { "MoveStop", &LuaUnit::MoveStop },                               // :MoveStop()
     { "MoveExpire", &LuaUnit::MoveExpire },                           // :MoveExpire([reset])
     { "MoveClear", &LuaUnit::MoveClear },                             // :MoveClear([reset])
+    { "DealDamage", &LuaUnit::DealDamage },                           // :DealDamage(target, amount[, durabilityloss]) - Deals damage to target, durabilityloss is true by default
+    { "DealHeal", &LuaUnit::DealHeal },                               // :DealDamage(target, amount, spell[, critical]) - Heals target by given amount. This will be logged as being healed by spell as critical if true.
 
     { NULL, NULL },
 };
@@ -454,9 +459,9 @@ ElunaRegister<Player> PlayerMethods[] =
     { "GetShieldBlockValue", &LuaPlayer::GetShieldBlockValue },                   // :GetShieldBlockValue() - Returns block value
 #endif
 #ifdef CLASSIC
-    {"GetHonorStoredKills", &LuaPlayer::GetHonorStoredKills},                     // :GetHonorStoredKills(on/off)
-    {"GetRankPoints", &LuaPlayer::GetRankPoints},                                 // :GetRankPoints()
-    {"GetHonorLastWeekStandingPos", &LuaPlayer::GetHonorLastWeekStandingPos},     // :GetHonorLastWeekStandingPos()
+    { "GetHonorStoredKills", &LuaPlayer::GetHonorStoredKills },                     // :GetHonorStoredKills(on/off)
+    { "GetRankPoints", &LuaPlayer::GetRankPoints },                                 // :GetRankPoints()
+    { "GetHonorLastWeekStandingPos", &LuaPlayer::GetHonorLastWeekStandingPos },     // :GetHonorLastWeekStandingPos()
 #endif
 
     // Setters
@@ -477,9 +482,9 @@ ElunaRegister<Player> PlayerMethods[] =
 #endif
 #endif
 #ifdef CLASSIC
-    {"SetHonorStoredKills", &LuaPlayer::SetHonorStoredKills},     // :SetHonorStoredKills(kills, [on/off])
-    {"SetRankPoints", &LuaPlayer::SetRankPoints},                 // :SetRankPoints(rankPoints)
-    {"SetHonorLastWeekStandingPos", &LuaPlayer::SetHonorLastWeekStandingPos}, // :SetHonorLastWeekStandingPos(standingPos)
+    { "SetHonorStoredKills", &LuaPlayer::SetHonorStoredKills },     // :SetHonorStoredKills(kills, [on/off])
+    { "SetRankPoints", &LuaPlayer::SetRankPoints },                 // :SetRankPoints(rankPoints)
+    { "SetHonorLastWeekStandingPos", &LuaPlayer::SetHonorLastWeekStandingPos }, // :SetHonorLastWeekStandingPos(standingPos)
 #endif
     { "SetLifetimeKills", &LuaPlayer::SetLifetimeKills },         // :SetLifetimeKills(val) - Sets the overall lifetime (honorable) kills of the player
     { "SetGameMaster", &LuaPlayer::SetGameMaster },               // :SetGameMaster([on]) - Sets GM mode on or off
@@ -681,9 +686,9 @@ ElunaRegister<Player> PlayerMethods[] =
     { "SummonPlayer", &LuaPlayer::SummonPlayer },                                         // :SummonPlayer(player, map, x, y, z, zoneId[, delay]) - Sends a popup to the player asking if he wants to be summoned if yes, teleported to coords. ZoneID defines the location name shown in the popup Delay is the time until the popup closes automatically.
     { "SaveToDB", &LuaPlayer::SaveToDB },                                                 // :SaveToDB() - Saves to database
 #ifdef CLASSIC
-    {"UpdateHonor", &LuaPlayer::UpdateHonor},                                             // :UpdateHonor() - Updates Player Honor
-    {"ResetHonor", &LuaPlayer::ResetHonor},                                               // :ResetHonor() - Resets Player Honor
-    {"ClearHonorInfo", &LuaPlayer::ClearHonorInfo},                                       // :ClearHonorInfo() - Clear Player Honor Info
+    { "UpdateHonor", &LuaPlayer::UpdateHonor },                                             // :UpdateHonor() - Updates Player Honor
+    { "ResetHonor", &LuaPlayer::ResetHonor },                                               // :ResetHonor() - Resets Player Honor
+    { "ClearHonorInfo", &LuaPlayer::ClearHonorInfo },                                       // :ClearHonorInfo() - Clear Player Honor Info
 #endif
 
     { NULL, NULL },
@@ -701,7 +706,6 @@ ElunaRegister<Creature> CreatureMethods[] =
     { "GetScriptId", &LuaCreature::GetScriptId },                                     // :GetScriptId() - Returns creature's script ID
     { "GetAIName", &LuaCreature::GetAIName },                                         // :GetAIName() - Returns creature's AI name
     { "GetScriptName", &LuaCreature::GetScriptName },                                 // :GetScriptName() - Returns creature's script name
-    { "GetReactState", &LuaCreature::GetReactState },                                 // :GetReactState() - Returns creature's react state
     { "GetAttackDistance", &LuaCreature::GetAttackDistance },                         // :GetAttackDistance(unit) - Returns attack distance to unit
     { "GetAggroRange", &LuaCreature::GetAggroRange },                                 // :GetAggroRange(unit) - Returns aggro distance to unit
     { "GetDefaultMovementType", &LuaCreature::GetDefaultMovementType },               // :GetDefaultMovementType() - Returns default movement type
@@ -720,7 +724,7 @@ ElunaRegister<Creature> CreatureMethods[] =
     // Setters
     { "SetHover", &LuaCreature::SetHover },                                   // :SetHover([enable]) - Sets hover on or off
     // {"SetDisableGravity", &LuaCreature::SetDisableGravity},              // :SetDisableGravity([disable, packetOnly]) - Disables or enables gravity
-    { "SetReactState", &LuaCreature::SetReactState },                         // :SetReactState(state) - Sets react state
+    { "SetAllowedCombat", &LuaCreature::SetAllowedCombat },                   // :SetAllowedCombat(allow) - Allows the creature to attack or not
     { "SetNoCallAssistance", &LuaCreature::SetNoCallAssistance },             // :SetNoCallAssistance([noCall]) - Sets call assistance to false or true
     { "SetNoSearchAssistance", &LuaCreature::SetNoSearchAssistance },         // :SetNoSearchAssistance([noSearch]) - Sets assistance searhing to false or true
     { "SetDefaultMovementType", &LuaCreature::SetDefaultMovementType },       // :SetDefaultMovementType(type) - Sets default movement type
@@ -744,7 +748,7 @@ ElunaRegister<Creature> CreatureMethods[] =
     { "HasCategoryCooldown", &LuaCreature::HasCategoryCooldown },                                 // :HasCategoryCooldown(spellId) - Returns true if the creature has a cooldown for the spell's category
     { "CanWalk", &LuaCreature::CanWalk },                                                         // :CanWalk() - Returns true if the creature can walk
     { "CanSwim", &LuaCreature::CanSwim },                                                         // :CanSwim() - Returns true if the creature can swim
-    { "HasReactState", &LuaCreature::HasReactState },                                             // :HasReactState(state) - Returns true if the creature has react state
+    { "IsCombatAllowed", &LuaCreature::IsCombatAllowed },                                         // :IsCombatAllowed() - Returns true if the creature has combat allowed
     // {"CanStartAttack", &LuaCreature::CanStartAttack},                                        // :CanStartAttack(unit[, force]) - Returns true if the creature can attack the unit
     { "HasSearchedAssistance", &LuaCreature::HasSearchedAssistance },                             // :HasSearchedAssistance() - Returns true if the creature has searched assistance
     { "CanAssistTo", &LuaCreature::CanAssistTo },                                                 // :CanAssistTo(unit, enemy[, checkfaction]) - Returns true if the creature can assist unit with enemy
@@ -760,7 +764,6 @@ ElunaRegister<Creature> CreatureMethods[] =
     { "CanFly", &LuaCreature::CanFly },                                                           // :CanFly() - Returns true if the creature can fly
 
     // Other
-    // {"Despawn", &LuaCreature::Despawn},                          // :Despawn([despawnDelay]) - Creature despawns after given time
     { "FleeToGetAssistance", &LuaCreature::FleeToGetAssistance },     // :FleeToGetAssistance() - Creature flees for assistance
     { "CallForHelp", &LuaCreature::CallForHelp },                     // :CallForHelp(radius) - Creature calls for help from units in radius
     { "CallAssistance", &LuaCreature::CallAssistance },               // :CallAssistance() - Creature calls for assistance
@@ -768,7 +771,6 @@ ElunaRegister<Creature> CreatureMethods[] =
     { "DespawnOrUnsummon", &LuaCreature::DespawnOrUnsummon },         // :DespawnOrUnsummon([Delay]) - Despawns the creature after delay if given
     { "Respawn", &LuaCreature::Respawn },                             // :Respawn([force]) - Respawns the creature
     // {"AddLootMode", &LuaCreature::AddLootMode},                  // :AddLootMode(lootMode)
-    // {"DealDamage", &LuaCreature::DealDamage},                    // :DealDamage(target, amount) - Deals damage to target (if target) : if no target, unit will damage self
     // {"SendCreatureTalk", &LuaCreature::SendCreatureTalk},        // :SendCreatureTalk(id, playerGUID) - Sends a chat message to a playerGUID (player) by id. Id can be found in creature_text under the 'group_id' column
     { "AttackStart", &LuaCreature::AttackStart },                     // :AttackStart(target) - Creature attacks the specified target
     // {"ResetLootMode", &LuaCreature::ResetLootMode},
@@ -799,9 +801,9 @@ ElunaRegister<GameObject> GameObjectMethods[] =
     { "IsSpawned", &LuaGameObject::IsSpawned },               // :IsSpawned()
 
     // Other
-    { "RegisterEvent", &LuaGameObject::RegisterEvent },       // :RegisterEvent(function, delay, calls)
-    { "RemoveEventById", &LuaGameObject::RemoveEventById },   // :RemoveEventById(eventID)
-    { "RemoveEvents", &LuaGameObject::RemoveEvents },         // :RemoveEvents()
+    { "RegisterEvent", &LuaGameObject::RegisterEvent },       // :RegisterEvent(function, delay, calls) - The timer ticks if this gameobject is visible to someone. The function is called with arguments (eventid, delay, repeats, gameobject) after the time has passed if the gameobject exists. Returns EventId
+    { "RemoveEventById", &LuaGameObject::RemoveEventById },   // :RemoveEventById(eventID) - Removes a Registered (timed) event by it's ID.
+    { "RemoveEvents", &LuaGameObject::RemoveEvents },         // :RemoveEvents() - Removes all registered timed events
     { "RemoveFromWorld", &LuaGameObject::RemoveFromWorld },   // :RemoveFromWorld(del)
     { "UseDoorOrButton", &LuaGameObject::UseDoorOrButton },   // :UseDoorOrButton(delay) - Activates/closes/opens after X delay UNDOCUMENTED
     { "Despawn", &LuaGameObject::Despawn },                   // :Despawn([delay]) - Despawns the object after delay
@@ -956,9 +958,6 @@ ElunaRegister<Quest> QuestMethods[] =
 #endif
     { "IsRepeatable", &LuaQuest::IsRepeatable },                  // :IsRepeatable() - Returns true or false if the quest is repeatable
 
-    // Setters
-    { "SetFlag", &LuaQuest::SetFlag },                            // :SetFlag(flag) - Sets the flag of the quest by the specified flag
-
     { NULL, NULL },
 };
 
@@ -1039,7 +1038,8 @@ ElunaRegister<Guild> GuildMethods[] =
     { NULL, NULL },
 };
 
-#if (!defined(TBC) && !defined(CLASSIC))
+#ifndef CLASSIC
+#ifndef TBC
 ElunaRegister<Vehicle> VehicleMethods[] =
 {
     // Getters
@@ -1056,6 +1056,7 @@ ElunaRegister<Vehicle> VehicleMethods[] =
 
     { NULL, NULL },
 };
+#endif
 #endif
 
 ElunaRegister<QueryResult> QueryMethods[] =
@@ -1075,7 +1076,8 @@ ElunaRegister<QueryResult> QueryMethods[] =
     { "GetInt64", &LuaQuery::GetInt64 },                      // :GetInt64(column) - returns the value of a bigint column as string
     { "GetFloat", &LuaQuery::GetFloat },                      // :GetFloat(column) - returns the value of a float column
     { "GetDouble", &LuaQuery::GetDouble },                    // :GetDouble(column) - returns the value of a double column
-    { "GetString", &LuaQuery::GetString },                    // :GetString(column) - returns the value of a string column
+    { "GetString", &LuaQuery::GetString },                    // :GetString(column) - returns the value of a string column, always returns a string
+    { "GetCString", &LuaQuery::GetCString },                  // :GetCString(column) - returns the value of a string column, can return nil
     { "IsNull", &LuaQuery::IsNull },                          // :IsNull(column) - returns true if the column is null
 
     { NULL, NULL },
@@ -1127,6 +1129,7 @@ ElunaRegister<Map> MapMethods[] =
     { "GetMapId", &LuaMap::GetMapId },                        // :GetMapId() - Returns the map's ID UNDOCUMENTED
     { "GetAreaId", &LuaMap::GetAreaId },                      // :GetAreaId(x, y, z) - Returns the map's area ID based on coords UNDOCUMENTED
     { "GetHeight", &LuaMap::GetHeight },                      // :GetHeight(x, y[, phasemask]) - Returns ground Z coordinate. UNDOCUMENTED
+    { "GetWorldObject", &LuaMap::GetWorldObject },            // :GetWorldObject(guid) - Returns a worldobject (player, creature, gameobject..) from the map by it's guid
 
     // Booleans
 #ifndef CLASSIC
@@ -1182,13 +1185,20 @@ template<typename T> const char* ElunaTemplate<T>::tname = NULL;
 template<typename T> bool ElunaTemplate<T>::manageMemory = false;
 #if (!defined(TBC) && !defined(CLASSIC))
 // fix compile error about accessing vehicle destructor
-template<> int ElunaTemplate<Vehicle>::gcT(lua_State* L) { return 0; }
+template<> int ElunaTemplate<Vehicle>::gcT(lua_State* L)
+{
+    // If assert fails, should code mem management here or flag Vehicles not mem managed
+    ASSERT(!manageMemory);
+    return 0;
+}
 #endif
 
 void RegisterFunctions(lua_State* L)
 {
     RegisterGlobals(L);
-    lua_settop(L, 0); // clean stack
+
+    // You should add Eluna::RemoveRef(this); to all destructors for objects that are NOT mem managed (gc) by lua.
+    // Exceptions being Quest type static data structs that will never be destructed (during runtime), though they can have it as well.
 
     ElunaTemplate<Object>::Register(L, "Object");
     ElunaTemplate<Object>::SetMethods(L, ObjectMethods);
@@ -1228,9 +1238,11 @@ void RegisterFunctions(lua_State* L)
     ElunaTemplate<Item>::SetMethods(L, ObjectMethods);
     ElunaTemplate<Item>::SetMethods(L, ItemMethods);
 
-#if (!defined(TBC) && !defined(CLASSIC))
+#ifndef CLASSIC
+#ifndef TBC
     ElunaTemplate<Vehicle>::Register(L, "Vehicle");
     ElunaTemplate<Vehicle>::SetMethods(L, VehicleMethods);
+#endif
 #endif
 
     ElunaTemplate<Group>::Register(L, "Group");
@@ -1262,6 +1274,4 @@ void RegisterFunctions(lua_State* L)
 
     ElunaTemplate<QueryResult>::Register(L, "QueryResult", true);
     ElunaTemplate<QueryResult>::SetMethods(L, QueryMethods);
-
-    lua_settop(L, 0); // clean stack
 }

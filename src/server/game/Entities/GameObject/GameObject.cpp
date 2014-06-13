@@ -34,6 +34,7 @@
 #include "UpdateFieldFlags.h"
 #include "World.h"
 #include "Transport.h"
+#include "LuaEngine.h"
 
 GameObject::GameObject() : WorldObject(false), MapObject(),
     m_model(NULL), m_goValue(), m_AI(NULL)
@@ -70,6 +71,10 @@ GameObject::GameObject() : WorldObject(false), MapObject(),
 
 GameObject::~GameObject()
 {
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
+
     delete m_AI;
     delete m_model;
     //if (m_uint32Values)                                      // field array can be not exist if GameOBject not loaded
@@ -320,7 +325,7 @@ void GameObject::Update(uint32 diff)
                         if (owner->IsInCombat())
                             m_cooldownTime = time(NULL) + goInfo->trap.startDelay;
 
-                        SetLootState(GO_READY);
+                    SetLootState(GO_READY);
                     break;
                 }
                 case GAMEOBJECT_TYPE_TRANSPORT:
@@ -471,6 +476,7 @@ void GameObject::Update(uint32 diff)
                         SetLootState(GO_ACTIVATED);
                         break;
                     }
+
                     // Type 0 despawns after being triggered, type 1 does not.
                     /// @todo This is activation radius. Casting radius must be selected from spell data.
                     float radius;
@@ -509,8 +515,8 @@ void GameObject::Update(uint32 diff)
                     }
 
                     if (target)
-                    {
                         SetLootState(GO_ACTIVATED, target);
+
                 }
                 else if (uint32 max_charges = goInfo->GetCharges())
                 {
@@ -555,7 +561,7 @@ void GameObject::Update(uint32 diff)
                         }
                         else m_groupLootTimer -= diff;
                     }
-                  break;
+                    break;
                 case GAMEOBJECT_TYPE_TRAP:
                 {
                     GameObjectTemplate const* goInfo = GetGOInfo();
@@ -565,12 +571,13 @@ void GameObject::Update(uint32 diff)
                         CastSpell(NULL, goInfo->trap.spellId);
                         SetLootState(GO_JUST_DEACTIVATED);
                     }
-                    else if (Unit* target = Unit::GetUnit(*this, m_lootStateUnitGUID))
+                    else if (Unit* target = ObjectAccessor::GetUnit(*this, m_lootStateUnitGUID))
                     {
                         // Some traps do not have a spell but should be triggered
                         if (goInfo->trap.spellId)
                             CastSpell(target, goInfo->trap.spellId);
-                    // Template value or 4 seconds
+
+                        // Template value or 4 seconds
                         m_cooldownTime = time(NULL) + (goInfo->trap.cooldown ? goInfo->trap.cooldown : uint32(4));
 
                         if (goInfo->trap.type == 1)
@@ -2016,6 +2023,10 @@ void GameObject::SetLootState(LootState state, Unit* unit)
     m_lootStateUnitGUID = unit ? unit->GetGUID() : 0;
     AI()->OnStateChanged(state, unit);
     sScriptMgr->OnGameObjectLootStateChanged(this, state, unit);
+
+    if (GetGoType() == GAMEOBJECT_TYPE_DOOR) // only set collision for doors on SetGoState
+        return;
+
     if (m_model)
     {
         bool collision = false;

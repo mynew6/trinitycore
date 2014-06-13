@@ -28,7 +28,8 @@
 #include "ConditionMgr.h"
 #include "Player.h"
 #include "Opcodes.h"
-#include "../../../scripts/Custom/Transmogrification.h"
+#include "LuaEngine.h"
+#include "WorldSession.h"
 
 void AddItemsSetItem(Player* player, Item* item)
 {
@@ -256,6 +257,13 @@ Item::Item()
     m_paidExtendedCost = 0;
 }
 
+Item::~Item()
+{
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
+}
+
 bool Item::Create(uint32 guidlow, uint32 itemid, Player const* owner)
 {
     Object::_Create(guidlow, 0, HIGHGUID_ITEM);
@@ -480,7 +488,6 @@ bool Item::LoadFromDB(uint32 guid, uint64 owner_guid, Field* fields, uint32 entr
 /*static*/
 void Item::DeleteFromDB(SQLTransaction& trans, uint32 itemGuid)
 {
-    sTransmogrification->DeleteFakeFromDB(itemGuid, &trans); // custom
     PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ITEM_INSTANCE);
     stmt->setUInt32(0, itemGuid);
     trans->Append(stmt);

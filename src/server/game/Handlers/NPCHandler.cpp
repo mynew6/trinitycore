@@ -37,9 +37,7 @@
 #include "ScriptMgr.h"
 #include "CreatureAI.h"
 #include "SpellInfo.h"
-#include "HookMgr.h"
-//Bot
-#include "bothelper.h"
+#include "LuaEngine.h"
 
 enum StableResultCode
 {
@@ -305,36 +303,6 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)
     uint64 guid;
     recvData >> guid;
 
-    //Bot
-    if (guid == _player->GetGUID())
-    {
-        if (!_player->GetBotHelper())
-        {
-            TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) do not have a helper on gossip hello.", uint32(GUID_LOPART(guid)));
-            return;
-        }
-        _player->GetBotHelper()->OnGossipHello(_player);
-        return;
-    }
-    else if (IS_CREATURE_GUID(guid))
-    {
-        if (Creature* qBot = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid))
-        {
-            if (qBot->IsQuestBot() &&
-                (_player->IsAlive() || qBot->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_GHOST) &&
-                (qBot->IsAlive() || (qBot->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_DEAD_INTERACT)))
-            {
-                if (!sScriptMgr->OnGossipHello(_player, qBot))
-                {
-                    TC_LOG_ERROR("network", "WORLD: HandleGossipHelloOpcode - qBot %s (Entry: %u) returned false on gossip hello.",
-                        qBot->GetName().c_str(), qBot->GetEntry());
-                }
-                return;
-            }
-        }
-    }
-    //end Bot
-
     Creature* unit = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_NONE);
     if (!unit)
     {
@@ -423,7 +391,6 @@ void WorldSession::HandleSpiritHealerActivateOpcode(WorldPacket& recvData)
     TC_LOG_DEBUG("network", "WORLD: CMSG_SPIRIT_HEALER_ACTIVATE");
 
     uint64 guid;
-
     recvData >> guid;
 
     Creature* unit = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_SPIRITHEALER);
@@ -443,7 +410,6 @@ void WorldSession::HandleSpiritHealerActivateOpcode(WorldPacket& recvData)
 void WorldSession::SendSpiritResurrect()
 {
     _player->ResurrectPlayer(0.5f, true);
-
     _player->DurabilityLossAll(0.25f, true);
 
     // get corpse nearest graveyard

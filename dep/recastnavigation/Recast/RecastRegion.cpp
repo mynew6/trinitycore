@@ -1423,3 +1423,4 @@ bool rcBuildRegions(rcContext* ctx, rcCompactHeightfield& chf,
 	return true;
 }
 
+

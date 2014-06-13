@@ -30,7 +30,7 @@
 #include "Unit.h"
 #include "Util.h"
 #include "Group.h"
-#include "Opcodes.h"
+#include "WorldSession.h"
 
 #define PET_XP_FACTOR 0.05f
 
@@ -844,7 +844,7 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
     if (IsPet() && GetOwner()->GetTypeId() == TYPEID_PLAYER)
     {
         if (GetOwner()->getClass() == CLASS_WARLOCK
-                || GetOwner()->getClass() == CLASS_SHAMAN        // Fire Elemental
+            || GetOwner()->getClass() == CLASS_SHAMAN        // Fire Elemental
             || GetOwner()->getClass() == CLASS_DEATH_KNIGHT) // Risen Ghoul
         {
             petType = SUMMON_PET;
@@ -2056,7 +2056,6 @@ void Pet::ProhibitSpellSchool(SpellSchoolMask idSchoolMask, uint32 unTimeMs)
     if (!cooldowns.empty())
     {
         BuildCooldownPacket(data, SPELL_COOLDOWN_FLAG_NONE, cooldowns);
-
         GetOwner()->GetSession()->SendPacket(&data);
     }
 }

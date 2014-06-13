@@ -1501,3 +1501,4 @@ dtStatus dtNavMesh::getPolyArea(dtPolyRef ref, unsigned char* resultArea) const
 	
 	return DT_SUCCESS;
 }
+

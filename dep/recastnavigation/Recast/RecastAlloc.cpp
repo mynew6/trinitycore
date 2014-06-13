@@ -85,3 +85,4 @@ void rcIntArray::resize(int n)
 	}
 	m_size = n;
 }
+

@@ -451,6 +451,7 @@ void rcMarkConvexPolyArea(rcContext* ctx, const float* verts, const int nverts,
 
 	ctx->stopTimer(RC_TIMER_MARK_CONVEXPOLY_AREA);
 }
+
 int rcOffsetPoly(const float* verts, const int nverts, const float offset,
 				 float* outVerts, const int maxOutVerts)
 {

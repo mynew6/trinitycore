@@ -46,10 +46,8 @@
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
-#include "HookMgr.h"
+#include "LuaEngine.h"
 
-//bot
-#include "Config.h"
 
 class LoginQueryHolder : public SQLQueryHolder
 {
@@ -246,8 +244,6 @@ void WorldSession::HandleCharEnum(PreparedQueryResult result)
 
 void WorldSession::HandleCharEnumOpcode(WorldPacket & /*recvData*/)
 {
-    AntiDOS.AllowOpcode(CMSG_CHAR_ENUM, false);
-
     // remove expired bans
     PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_EXPIRED_BANS);
     CharacterDatabase.Execute(stmt);
@@ -684,7 +680,6 @@ void WorldSession::HandleCharCreateCallback(PreparedQueryResult result, Characte
             data << uint8(CHAR_CREATE_SUCCESS);
             SendPacket(&data);
 
-            AntiDOS.AllowOpcode(CMSG_CHAR_ENUM, true);
             std::string IP_str = GetRemoteAddress();
             TC_LOG_INFO("entities.player.character", "Account: %d (IP: %s) Create Character:[%s] (GUID: %u)", GetAccountId(), IP_str.c_str(), createInfo->Name.c_str(), newChar.GetGUIDLow());
             sScriptMgr->OnPlayerCreate(&newChar);
@@ -761,15 +756,14 @@ void WorldSession::HandleCharDeleteOpcode(WorldPacket& recvData)
     WorldPacket data(SMSG_CHAR_DELETE, 1);
     data << uint8(CHAR_DELETE_SUCCESS);
     SendPacket(&data);
-
-    AntiDOS.AllowOpcode(CMSG_CHAR_ENUM, true);
 }
 
 void WorldSession::HandlePlayerLoginOpcode(WorldPacket& recvData)
 {
     if (PlayerLoading() || GetPlayer() != NULL)
     {
-        TC_LOG_ERROR("network", "Player tryes to login again, AccountId = %d", GetAccountId());
+        TC_LOG_ERROR("network", "Player tries to login again, AccountId = %d", GetAccountId());
+        KickPlayer();
         return;
     }
 
@@ -1009,7 +1003,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     }
 #ifdef ELUNA
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
-        sHookMgr->OnFirstLogin(pCurrChar);
+        sEluna->OnFirstLogin(pCurrChar);
 #endif
 
     if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
@@ -1034,35 +1028,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 
     m_playerLoading = false;
 
-    //the only place where we check if it has NPC bots
-    if (sConfigMgr->GetBoolDefault("Bot.EnableNpcBots", true))
-    {
-        PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_NPCBOTS);
-        stmt->setUInt32(0, pCurrChar->GetGUIDLow());
-        PreparedQueryResult result = CharacterDatabase.Query(stmt);
-        if (result)
-        {
-            uint32 m_bot_entry = 0;
-            uint8 m_bot_race = 0;
-            uint8 m_bot_class = 0;
-            uint32 equips[18];
-            do
-            {
-                Field* fields = result->Fetch();
-                m_bot_entry = fields[0].GetUInt32();
-                m_bot_race = fields[1].GetUInt8();
-                m_bot_class = fields[2].GetInt8();
-                for (uint8 i = 0; i != 18; ++i)
-                    equips[i] = fields[i + 4].GetUInt32();
-
-                if (m_bot_entry && m_bot_race && m_bot_class)
-                    pCurrChar->SetBotMustBeCreated(m_bot_entry, m_bot_race, m_bot_class, equips);
-
-            } while (result->NextRow());
-        }
-    }
-
-  // Handle Login-Achievements (should be handled after loading)
+    // Handle Login-Achievements (should be handled after loading)
     _player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN, 1);
 
     sScriptMgr->OnPlayerLogin(pCurrChar);
@@ -1203,7 +1169,6 @@ void WorldSession::HandleCharRenameOpcode(WorldPacket& recvData)
 
 void WorldSession::HandleChangePlayerNameOpcodeCallBack(PreparedQueryResult result, std::string const& newName)
 {
-    AntiDOS.AllowOpcode(CMSG_CHAR_ENUM, true);
     if (!result)
     {
         WorldPacket data(SMSG_CHAR_RENAME, 1);
@@ -1461,8 +1426,6 @@ void WorldSession::HandleCharCustomize(WorldPacket& recvData)
 
     stmt->setUInt32(0, GUID_LOPART(guid));
     // TODO: Make async with callback
-    // TODO 2: Allow opcode at end of callback
-    AntiDOS.AllowOpcode(CMSG_CHAR_ENUM, true);
     PreparedQueryResult result = CharacterDatabase.Query(stmt);
 
     if (!result)
@@ -1717,8 +1680,7 @@ void WorldSession::HandleCharFactionOrRaceChange(WorldPacket& recvData)
     uint8 playerClass = nameData->m_class;
     uint8 level = nameData->m_level;
 
-    // TO Do: Make async and allow opcode on callback
-    AntiDOS.AllowOpcode(CMSG_CHAR_ENUM, true);
+    // TO Do: Make async
     PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHAR_AT_LOGIN_TITLES);
     stmt->setUInt32(0, lowGuid);
     PreparedQueryResult result = CharacterDatabase.Query(stmt);
@@ -1961,8 +1923,8 @@ void WorldSession::HandleCharFactionOrRaceChange(WorldPacket& recvData)
                 if (result)
                     if (Guild* guild = sGuildMgr->GetGuildById((result->Fetch()[0]).GetUInt32()))
                         guild->DeleteMember(MAKE_NEW_GUID(lowGuid, 0, HIGHGUID_PLAYER), false, false, true);
-                        
-                 Player::LeaveAllArenaTeams(guid);
+
+                Player::LeaveAllArenaTeams(guid);
             }
 
             if (!HasPermission(rbac::RBAC_PERM_TWO_SIDE_ADD_FRIEND))

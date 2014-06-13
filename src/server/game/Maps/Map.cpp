@@ -35,6 +35,7 @@
 #include "Transport.h"
 #include "Vehicle.h"
 #include "VMapFactory.h"
+#include "LuaEngine.h"
 
 u_map_magic MapMagic        = { {'M','A','P','S'} };
 u_map_magic MapVersionMagic = { {'v','1','.','3'} };
@@ -51,6 +52,10 @@ GridState* si_GridStates[MAX_GRID_STATE];
 Map::~Map()
 {
     sScriptMgr->OnDestroyMap(this);
+
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
 
     UnloadAll();
 
@@ -2679,10 +2684,7 @@ uint32 Map::GetPlayersCountExceptGMs() const
     uint32 count = 0;
     for (MapRefManager::const_iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
         if (!itr->GetSource()->IsGameMaster())
-        {
             ++count;
-            count += itr->GetSource()->GetNpcBotsCount();
-        }
     return count;
 }
 

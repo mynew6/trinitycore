@@ -1589,60 +1589,6 @@ class achievement_all_you_can_eat : public AchievementCriteriaScript
         }
 };
 
-class VictimFilter
-{
-    public:
-        VictimFilter(Unit* caster) : _victim(caster->GetVictim())
-        {
-        }
- 
-        bool operator()(WorldObject* target)
-        {
-            return target == _victim;
-        }
- 
-    private:
-        Unit* _victim;
-};
-
-class spell_ice_tomb_target : public SpellScriptLoader
-{
-    public:
-        spell_ice_tomb_target() : SpellScriptLoader("spell_ice_tomb_target") { }
- 
-        class spell_ice_tomb_target_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_ice_tomb_target_SpellScript);
- 
-        public:
-            spell_ice_tomb_target_SpellScript() : SpellScript() { }
- 
-            bool Validate(SpellInfo const* /*spell*/)
-            {
-                if (!sSpellMgr->GetSpellInfo(SPELL_ICE_TOMB_TARGET))
-                    return false;
-                return true;
-            }
- 
-                        void TargetFilter(std::list<WorldObject*>& targets)
-                        {
-                                targets.remove_if(VictimFilter(GetCaster()));
-                        }
- 
-            void Register()
-            {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_ice_tomb_target_SpellScript::TargetFilter, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
-          
-            }
- 
-        };
- 
-        SpellScript* GetSpellScript() const
-        {
-            return new spell_ice_tomb_target_SpellScript();
-        }
-};
-
 void AddSC_boss_sindragosa()
 {
     new boss_sindragosa();
@@ -1654,7 +1600,7 @@ void AddSC_boss_sindragosa()
     new spell_sindragosa_unchained_magic();
     new spell_sindragosa_frost_breath();
     new spell_sindragosa_instability();
-    //new spell_sindragosa_frost_beacon();
+    new spell_sindragosa_frost_beacon();
     new spell_sindragosa_ice_tomb();
     new spell_sindragosa_icy_grip();
     new spell_sindragosa_mystic_buffet();
@@ -1665,5 +1611,4 @@ void AddSC_boss_sindragosa()
     new spell_trigger_spell_from_caster("spell_sindragosa_ice_tomb_dummy", SPELL_FROST_BEACON);
     new at_sindragosa_lair();
     new achievement_all_you_can_eat();
-    new spell_ice_tomb_target();
 }

@@ -33,6 +33,7 @@
 #include "EventProcessor.h"
 #include "Player.h"
 #include "Battleground.h"
+#include "LuaEngine.h"
 
 Vehicle::Vehicle(Unit* unit, VehicleEntry const* vehInfo, uint32 creatureEntry) :
 UsableSeatNum(0), _me(unit), _vehicleInfo(vehInfo), _creatureEntry(creatureEntry), _status(STATUS_NONE), _lastShootPos()
@@ -59,6 +60,10 @@ UsableSeatNum(0), _me(unit), _vehicleInfo(vehInfo), _creatureEntry(creatureEntry
 
 Vehicle::~Vehicle()
 {
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
+
     /// @Uninstall must be called before this.
     ASSERT(_status == STATUS_UNINSTALLING);
     for (SeatMap::const_iterator itr = Seats.begin(); itr != Seats.end(); ++itr)
@@ -76,42 +81,9 @@ Vehicle::~Vehicle()
 
 void Vehicle::Install()
 {
-    if (Creature* creature = _me->ToCreature())
-    {
-        switch (_vehicleInfo->m_powerType)
-        {
-            case POWER_STEAM:
-            case POWER_HEAT:
-            case POWER_BLOOD:
-            case POWER_OOZE:
-            case POWER_WRATH:
-                _me->setPowerType(POWER_ENERGY);
-                _me->SetMaxPower(POWER_ENERGY, 100);
-                break;
-            case POWER_PYRITE:
-                _me->setPowerType(POWER_ENERGY);
-                _me->SetMaxPower(POWER_ENERGY, 50);
-                break;
-            default:
-                for (uint32 i = 0; i < MAX_SPELL_VEHICLE; ++i)
-                {
-                    if (!creature->m_spells[i])
-                        continue;
-
-                    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(creature->m_spells[i]);
-                    if (!spellInfo)
-                        continue;
-
-                    if (spellInfo->PowerType == POWER_ENERGY && spellInfo->CalcPowerCost(_me, spellInfo->GetSchoolMask()) > 0)
-                    {
-                        _me->setPowerType(POWER_ENERGY);
-                        _me->SetMaxPower(POWER_ENERGY, 100);
-                        break;
-                    }
-                }
-                break;
-        }
-    }
+    if (_me->GetTypeId() == TYPEID_UNIT)
+        if (PowerDisplayEntry const* powerDisplay = sPowerDisplayStore.LookupEntry(_vehicleInfo->m_powerDisplayId))
+            _me->setPowerType(Powers(powerDisplay->PowerType));
 
     _status = STATUS_INSTALLED;
     if (GetBase()->GetTypeId() == TYPEID_UNIT)

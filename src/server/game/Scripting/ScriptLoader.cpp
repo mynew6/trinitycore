@@ -24,9 +24,6 @@ void AddSC_example_gossip_codebox();
 void AddSC_example_misc();
 void AddSC_example_commandscript();
 
-//TeleNPC2
-void AddSC_npc_teleport();
-
 // spells
 void AddSC_deathknight_spell_scripts();
 void AddSC_druid_spell_scripts();
@@ -474,11 +471,10 @@ void AddSC_boss_assembly_of_iron();
 void AddSC_boss_general_vezax();
 void AddSC_ulduar_teleporter();
 void AddSC_boss_mimiron();
-void AddSC_boss_thorim();
 void AddSC_boss_hodir();
 void AddSC_boss_freya();
-void AddSC_boss_yoggsaron();
-void AddSC_boss_algalon();
+void AddSC_boss_yogg_saron();
+void AddSC_boss_algalon_the_observer();
 void AddSC_instance_ulduar();
 
 // Utgarde Keep - Utgarde Keep
@@ -1315,11 +1311,10 @@ void AddNorthrendScripts()
     AddSC_boss_kologarn();
     AddSC_ulduar_teleporter();
     AddSC_boss_mimiron();
-    AddSC_boss_thorim();
     AddSC_boss_hodir();
     AddSC_boss_freya();
-    AddSC_boss_yoggsaron();
-    AddSC_boss_algalon();
+    AddSC_boss_yogg_saron();
+    AddSC_boss_algalon_the_observer();
     AddSC_instance_ulduar();
 
     // Utgarde Keep - Utgarde Keep
@@ -1441,48 +1436,13 @@ void AddBattlegroundScripts()
 
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
-void AddSC_CPWS_Transmogrification();
-void AddSC_REFORGER_NPC();
-//Bots
-void AddSC_death_knight_bot();
-void AddSC_druid_bot();
-void AddSC_hunter_bot();
-void AddSC_mage_bot();
-void AddSC_paladin_bot();
-void AddSC_priest_bot();
-void AddSC_rogue_bot();
-void AddSC_shaman_bot();
-void AddSC_warlock_bot();
-void AddSC_warrior_bot();
-void AddSC_script_bot_commands();
-//advanced
-void AddSC_BotQuests_chapter1();
-//end Bots
+
 #endif
 
 void AddCustomScripts()
 {
 #ifdef SCRIPTS
     /* This is where custom scripts should be added. */
-    AddSC_REFORGER_NPC();
-    // TeleNPC2
-    AddSC_CPWS_Transmogrification();
-    AddSC_npc_teleport();
-    //Bots
-    AddSC_death_knight_bot();
-    AddSC_druid_bot();
-    AddSC_hunter_bot();
-    AddSC_mage_bot();
-    AddSC_paladin_bot();
-    AddSC_priest_bot();
-    AddSC_rogue_bot();
-    AddSC_shaman_bot();
-    AddSC_warlock_bot();
-    AddSC_warrior_bot();
-    AddSC_script_bot_commands();
-    //advanced
-    AddSC_BotQuests_chapter1();
-    //end Bots
 
 #endif
 }

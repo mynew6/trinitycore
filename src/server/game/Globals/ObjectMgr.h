@@ -144,21 +144,6 @@ struct GameTele
 
 typedef std::unordered_map<uint32, GameTele > GameTeleContainer;
 
-#define MAX_CREATURE_OUTFIT_DISPLAYS 11
-struct CreatureOutfit
-{
-    uint8 race;
-    uint8 gender;
-    uint8 face;
-    uint8 skin;
-    uint8 hair;
-    uint8 facialhair;
-    uint8 haircolor;
-    uint32 outfit[MAX_CREATURE_OUTFIT_DISPLAYS];
-};
-
-typedef UNORDERED_MAP<uint32, CreatureOutfit > CreatureOutfitContainer;
-
 enum ScriptsType
 {
     SCRIPTS_FIRST = 1,
@@ -433,6 +418,7 @@ struct BroadcastText
         MaleText.resize(DEFAULT_LOCALE + 1);
         FemaleText.resize(DEFAULT_LOCALE + 1);
     }
+
     uint32 Id;
     uint32 Language;
     StringVector MaleText;
@@ -1025,7 +1011,6 @@ class ObjectMgr
 
         void LoadNPCSpellClickSpells();
 
-        void LoadCreatureOutfits();
         void LoadGameTele();
 
         void LoadGossipMenu();
@@ -1234,8 +1219,6 @@ class ObjectMgr
         bool AddGameTele(GameTele& data);
         bool DeleteGameTele(std::string const& name);
 
-        CreatureOutfitContainer const& GetCreatureOutfitMap() const { return _creatureOutfitStore; }
-
         TrainerSpellData const* GetNpcTrainerSpells(uint32 entry) const
         {
             CacheTrainerSpellContainer::const_iterator  iter = _cacheTrainerSpellStore.find(entry);
@@ -1310,8 +1293,6 @@ class ObjectMgr
         void LoadFactionChangeSpells();
         void LoadFactionChangeTitles();
 
-        ItemFakeStatContainer _itemFakeStatStore; // custom
-        
     private:
         // first free id for selected id type
         uint32 _auctionId;
@@ -1381,8 +1362,6 @@ class ObjectMgr
 
         PageTextContainer _pageTextStore;
         InstanceTemplateContainer _instanceTemplateStore;
-
-        CreatureOutfitContainer _creatureOutfitStore;
 
     private:
         void LoadScripts(ScriptsType type);
@@ -1464,6 +1443,5 @@ class ObjectMgr
 };
 
 #define sObjectMgr ACE_Singleton<ObjectMgr, ACE_Null_Mutex>::instance()
-
 
 #endif

@@ -126,7 +126,7 @@ extern DBCStorage <GtRegenMPPerSptEntry>         sGtRegenMPPerSptStore;
 extern DBCStorage <HolidaysEntry>                sHolidaysStore;
 extern DBCStorage <ItemEntry>                    sItemStore;
 extern DBCStorage <ItemBagFamilyEntry>           sItemBagFamilyStore;
-extern DBCStorage <ItemDisplayInfoEntry>		 sItemDisplayInfoStore;  // custom
+//extern DBCStorage <ItemDisplayInfoEntry>      sItemDisplayInfoStore; -- not used currently
 extern DBCStorage <ItemExtendedCostEntry>        sItemExtendedCostStore;
 extern DBCStorage <ItemLimitCategoryEntry>       sItemLimitCategoryStore;
 extern DBCStorage <ItemRandomPropertiesEntry>    sItemRandomPropertiesStore;
@@ -141,6 +141,7 @@ extern DBCStorage <MapEntry>                     sMapStore;
 extern MapDifficultyMap                          sMapDifficultyMap;
 extern DBCStorage <MovieEntry>                   sMovieStore;
 extern DBCStorage <OverrideSpellDataEntry>       sOverrideSpellDataStore;
+extern DBCStorage <PowerDisplayEntry>            sPowerDisplayStore;
 extern DBCStorage <QuestSortEntry>               sQuestSortStore;
 extern DBCStorage <QuestXPEntry>                 sQuestXPStore;
 extern DBCStorage <QuestFactionRewEntry>         sQuestFactionRewardStore;

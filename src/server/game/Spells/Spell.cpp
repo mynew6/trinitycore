@@ -55,6 +55,7 @@
 #include "SpellInfo.h"
 #include "Battlefield.h"
 #include "BattlefieldMgr.h"
+#include "LuaEngine.h"
 
 extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
 
@@ -567,7 +568,7 @@ m_caster((info->AttributesEx6 & SPELL_ATTR6_CAST_BY_CHARMER && caster->GetCharme
     m_spellState = SPELL_STATE_NULL;
     _triggeredCastFlags = triggerFlags;
     if (info->AttributesEx4 & SPELL_ATTR4_TRIGGERED)
-        _triggeredCastFlags = TRIGGERED_FULL_MASK;
+        _triggeredCastFlags = TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_EQUIPPED_ITEM_REQUIREMENT);
 
     m_CastItem = NULL;
     m_castItemGUID = 0;
@@ -620,6 +621,10 @@ m_caster((info->AttributesEx6 & SPELL_ATTR6_CAST_BY_CHARMER && caster->GetCharme
 
 Spell::~Spell()
 {
+#ifdef ELUNA
+    Eluna::RemoveRef(this);
+#endif
+
     // unload scripts
     while (!m_loadedScripts.empty())
     {
@@ -4188,7 +4193,7 @@ void Spell::SendChannelStart(uint32 duration)
 
 void Spell::SendResurrectRequest(Player* target)
 {
-    // get ressurector name for creature resurrections, otherwise packet will be not accepted
+    // get resurrector name for creature resurrections, otherwise packet will be not accepted
     // for player resurrections the name is looked up by guid
     std::string const sentName(m_caster->GetTypeId() == TYPEID_PLAYER
                                ? ""

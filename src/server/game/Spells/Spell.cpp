@@ -3825,7 +3825,7 @@ void Spell::SendSpellGo()
         && m_spellInfo->PowerType == POWER_RUNE
         && !(_triggeredCastFlags & TRIGGERED_IGNORE_POWER_AND_REAGENT_COST))
     {
-        castFlags |= CAST_FLAG_UNKNOWN_19;                   // same as in SMSG_SPELL_START
+		castFlags |= CAST_FLAG_NO_GCD;                       // not needed, but Blizzard sends it
         castFlags |= CAST_FLAG_RUNE_LIST;                    // rune cooldowns list
     }
 

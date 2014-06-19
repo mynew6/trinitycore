@@ -1295,7 +1295,7 @@ void GameObject::Use(Unit* user)
                 }
                 else if (info->goober.gossipID)
                 {
-                    player->PrepareGossipMenu(this, info->goober.gossipID, true);
+                    player->PrepareGossipMenu(this, info->goober.gossipID);
                     player->SendPreparedGossip(this);
                 }
 

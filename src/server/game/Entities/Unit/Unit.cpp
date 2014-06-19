@@ -13579,12 +13579,7 @@ void Unit::CleanupsBeforeDelete(bool finalCleanup)
 {
     CleanupBeforeRemoveFromMap(finalCleanup);
 
-    if (GetTransport())
-    {
-        GetTransport()->RemovePassenger(this);
-        SetTransport(NULL);
-        m_movementInfo.transport.Reset();
-    }
+    WorldObject::CleanupsBeforeDelete(finalCleanup);
 }
 
 void Unit::UpdateCharmAI()

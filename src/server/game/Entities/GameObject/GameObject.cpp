@@ -103,22 +103,14 @@ std::string GameObject::GetAIName() const
     return "";
 }
 
-void GameObject::CleanupsBeforeDelete(bool /*finalCleanup*/)
+void GameObject::CleanupsBeforeDelete(bool finalCleanup)
 {
-    if (IsInWorld())
-        RemoveFromWorld();
+    WorldObject::CleanupsBeforeDelete(finalCleanup);
 
     if (m_uint32Values)                                      // field array can be not exist if GameOBject not loaded
     {
         m_Events.KillAllEvents(true);
         RemoveFromOwner();
-    }
-
-    if (GetTransport() && !ToTransport())
-    {
-        GetTransport()->RemovePassenger(this);
-        SetTransport(NULL);
-        m_movementInfo.transport.Reset();
     }
 }
 

@@ -184,7 +184,6 @@ public:
         }
 
         void MoveInLineOfSight(Unit* who) override
-
         {
             if (!SpawnAssoc)
                 return;

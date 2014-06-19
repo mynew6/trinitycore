@@ -2158,6 +2158,7 @@ class Unit : public WorldObject
         // Part of Evade mechanics
         time_t GetLastDamagedTime() const { return _lastDamagedTime; }
         void SetLastDamagedTime(time_t val) { _lastDamagedTime = val; }
+        bool IsHighestExclusiveAura(Aura const* aura, bool removeOtherAuraApplications = false);
 
     protected:
         explicit Unit (bool isWorldObject);

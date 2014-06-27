@@ -699,21 +699,12 @@ void Aura::Update(uint32 diff, Unit* caster)
                         if (int32(caster->GetHealth()) > manaPerSecond)
                             caster->ModifyHealth(-manaPerSecond);
                         else
-                        {
                             Remove();
-                            return;
-                        }
                     }
+                    else if (int32(caster->GetPower(powertype)) >= manaPerSecond)
+                        caster->ModifyPower(powertype, -manaPerSecond);
                     else
-                    {
-                        if (int32(caster->GetPower(powertype)) >= manaPerSecond)
-                            caster->ModifyPower(powertype, -manaPerSecond);
-                        else
-                        {
-                            Remove();
-                            return;
-                        }
-                    }
+                        Remove();
                 }
             }
         }
@@ -745,11 +736,10 @@ int32 Aura::CalcMaxDuration(Unit* caster) const
 void Aura::SetDuration(int32 duration, bool withMods)
 {
     if (withMods)
-    {
         if (Unit* caster = GetCaster())
             if (Player* modOwner = caster->GetSpellModOwner())
                 modOwner->ApplySpellMod(GetId(), SPELLMOD_DURATION, duration);
-    }
+    
     m_duration = duration;
     SetNeedClientUpdateForTargets();
 }
@@ -906,10 +896,8 @@ bool Aura::HasMoreThanOneEffectForType(AuraType auraType) const
 {
     uint32 count = 0;
     for (uint32 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-    {
-        if (HasEffect(i) && GetSpellInfo()->Effects[i].ApplyAuraName == auraType)
+        if (HasEffect(i) && AuraType(GetSpellInfo()->Effects[i].ApplyAuraName) == auraType)
             ++count;
-    }
 
     return count > 1;
 }
@@ -917,10 +905,9 @@ bool Aura::HasMoreThanOneEffectForType(AuraType auraType) const
 bool Aura::IsArea() const
 {
     for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-    {
         if (HasEffect(i) && GetSpellInfo()->Effects[i].IsAreaAuraEffect())
             return true;
-    }
+    
     return false;
 }
 

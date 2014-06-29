@@ -28,6 +28,8 @@
 #include "CorpseMethods.h"
 #include "WeatherMethods.h"
 #include "VehicleMethods.h"
+#include "DetourNavMesh.h"
+
 
 void RegisterGlobals(lua_State* L)
 {

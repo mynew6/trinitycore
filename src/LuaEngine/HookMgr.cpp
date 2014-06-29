@@ -7,6 +7,7 @@
 #include "HookMgr.h"
 #include "LuaEngine.h"
 #include "Includes.h"
+#include "DetourNavMesh.h"
 
 using namespace HookMgr;
 

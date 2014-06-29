@@ -9,6 +9,7 @@
 #include "HookMgr.h"
 #include "LuaEngine.h"
 #include "Includes.h"
+#include "DetourNavMesh.h"
 
 Eluna::ScriptPaths Eluna::scripts;
 Eluna* Eluna::GEluna = NULL;

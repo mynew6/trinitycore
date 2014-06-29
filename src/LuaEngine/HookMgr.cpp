@@ -7,7 +7,6 @@
 #include "HookMgr.h"
 #include "LuaEngine.h"
 #include "Includes.h"
-#include "DetourNavMesh.h"
 
 using namespace HookMgr;
 
@@ -31,11 +30,13 @@ ENDCALL();
     if (!BINDMAP->HasEvents(EVENT)) \
         RET; \
     lua_State* L = sEluna->L; \
+    const char* _LuaBindType = sEluna->BINDMAP->groupName; \
     uint32 _LuaEvent = EVENT; \
     int _LuaStackTop = lua_gettop(L); \
     for (size_t i = 0; i < sEluna->BINDMAP->Bindings[_LuaEvent].size(); ++i) \
         lua_rawgeti(L, LUA_REGISTRYINDEX, (sEluna->BINDMAP->Bindings[_LuaEvent][i])); \
     int _LuaFuncTop = lua_gettop(L); \
+    int _LuaFuncCount = _LuaFuncTop-_LuaStackTop; \
     Eluna::Push(L, _LuaEvent);
 
 // use LUA_MULTRET for multiple return values
@@ -45,7 +46,7 @@ ENDCALL();
     int _LuaParams = lua_gettop(L) - _LuaFuncTop; \
     if (_LuaParams < 1) \
     { \
-        ELUNA_LOG_ERROR("[Eluna]: Executing event %u, params was %i. Report to devs", _LuaEvent, _LuaParams); \
+        ELUNA_LOG_ERROR("[Eluna]: Executing event %u for %s, params was %i. Report to devs", _LuaEvent, _LuaBindType, _LuaParams); \
     } \
     for (int j = _LuaFuncTop-_LuaStackTop; j > 0; --j) \
     { \
@@ -64,9 +65,12 @@ ENDCALL();
     if (!_Luabind) \
         RET; \
     lua_State* L = sEluna->L; \
+    const char* _LuaBindType = sEluna->BINDMAP->groupName; \
     uint32 _LuaEvent = EVENT; \
     int _LuaStackTop = lua_gettop(L); \
     lua_rawgeti(L, LUA_REGISTRYINDEX, _Luabind); \
+    int _LuaFuncTop = lua_gettop(L); \
+    int _LuaFuncCount = _LuaFuncTop-_LuaStackTop; \
     Eluna::Push(L, _LuaEvent);
 
 #define ENTRY_EXECUTE(RETVALS) \
@@ -78,9 +82,13 @@ ENDCALL();
     for (int IT = _LuaStackTop + 1; IT <= lua_gettop(L); ++IT)
 
 #define ENDCALL() \
-    if (_LuaReturnValues != LUA_MULTRET && lua_gettop(L) != _LuaStackTop + _LuaReturnValues) \
+    if (lua_gettop(L) < _LuaStackTop) \
     { \
-        ELUNA_LOG_ERROR("[Eluna]: Ending event %u, stack top was %i and was supposed to be %i. Report to devs", _LuaEvent, lua_gettop(L), _LuaStackTop + _LuaReturnValues); \
+        ELUNA_LOG_ERROR("[Eluna]: Ending event %u for %s, stack top was %i and was supposed to be >= %i. Report to devs", _LuaEvent, _LuaBindType, lua_gettop(L), _LuaStackTop); \
+    } \
+    if (_LuaReturnValues != LUA_MULTRET && lua_gettop(L) > _LuaStackTop + _LuaFuncCount * _LuaReturnValues) \
+    { \
+        ELUNA_LOG_ERROR("[Eluna]: Ending event %u for %s, stack top was %i and was supposed to be between %i and %i. Report to devs", _LuaEvent, _LuaBindType, lua_gettop(L), _LuaStackTop, _LuaStackTop + _LuaFuncCount * _LuaReturnValues); \
     } \
     lua_settop(L, _LuaStackTop);
 
@@ -151,7 +159,7 @@ bool Eluna::OnPacketSend(WorldSession* session, WorldPacket& packet)
     Player* player = NULL;
     if (session)
         player = session->GetPlayer();
-    OnPacketSendOne(player, packet, result);
+    OnPacketSendAny(player, packet, result);
     OnPacketSendOne(player, packet, result);
     return result;
 }
@@ -305,6 +313,12 @@ void Eluna::OnShutdownCancel()
 
 void Eluna::OnWorldUpdate(uint32 diff)
 {
+    if (reload)
+    {
+        ReloadEluna();
+        return;
+    }
+
     m_EventMgr->Update(diff);
     EVENT_BEGIN(ServerEventBindings, WORLD_EVENT_ON_UPDATE, return);
     Push(L, diff);
@@ -384,15 +398,36 @@ bool Eluna::OnQuestAccept(Player* pPlayer, Item* pItem, Quest const* pQuest)
 
 bool Eluna::OnUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targets)
 {
-    OnItemUse(pPlayer, pItem, targets);
-    OnItemGossip(pPlayer, pItem, targets);
-    // pPlayer->SendEquipError((InventoryResult)83, pItem, NULL);
-    // return true;
+    ObjectGuid guid = pItem->GET_GUID();
+    bool castSpell = true;
+
+    if (!OnItemGossip(pPlayer, pItem, targets))
+        castSpell = false;
+
+    pItem = pPlayer->GetItemByGuid(guid);
+    if (pItem && OnItemUse(pPlayer, pItem, targets))
+        pItem = pPlayer->GetItemByGuid(guid);
+    else
+        castSpell = false;
+
+    if (pItem && castSpell)
+        return true;
+
+    // Send equip error that shows no message
+    // This is a hack fix to stop spell casting visual bug when a spell is not cast on use
+    WorldPacket data(SMSG_INVENTORY_CHANGE_FAILURE, 18);
+    data << uint8(59); // EQUIP_ERR_NONE / EQUIP_ERR_CANT_BE_DISENCHANTED
+    data << ObjectGuid(guid);
+    data << ObjectGuid(uint64(0));
+    data << uint8(0);
+    pPlayer->GetSession()->SendPacket(&data);
     return false;
 }
+
 bool Eluna::OnItemUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targets)
 {
-    ENTRY_BEGIN(ItemEventBindings, pItem->GetEntry(), ITEM_EVENT_ON_USE, return false);
+    bool result = true;
+    ENTRY_BEGIN(ItemEventBindings, pItem->GetEntry(), ITEM_EVENT_ON_USE, return result);
     Push(L, pPlayer);
     Push(L, pItem);
 #ifdef MANGOS
@@ -420,19 +455,33 @@ bool Eluna::OnItemUse(Player* pPlayer, Item* pItem, SpellCastTargets const& targ
     else
         Push(L);
 #endif
-    ENTRY_EXECUTE(0);
+    ENTRY_EXECUTE(1);
+    FOR_RETS(i)
+    {
+        if (lua_isnoneornil(L, i))
+            continue;
+        result = CHECKVAL<bool>(L, i, result);
+    }
     ENDCALL();
-    return true;
+    return result;
 }
-bool Eluna::OnItemGossip(Player* pPlayer, Item* pItem, SpellCastTargets const& targets)
+
+bool Eluna::OnItemGossip(Player* pPlayer, Item* pItem, SpellCastTargets const& /*targets*/)
 {
-    ENTRY_BEGIN(ItemGossipBindings, pItem->GetEntry(), GOSSIP_EVENT_ON_HELLO, return false);
+    bool result = true;
+    ENTRY_BEGIN(ItemGossipBindings, pItem->GetEntry(), GOSSIP_EVENT_ON_HELLO, return result);
     pPlayer->PlayerTalkClass->ClearMenus();
     Push(L, pPlayer);
     Push(L, pItem);
-    ENTRY_EXECUTE(0);
+    ENTRY_EXECUTE(1);
+    FOR_RETS(i)
+    {
+        if (lua_isnoneornil(L, i))
+            continue;
+        result = CHECKVAL<bool>(L, i, result);
+    }
     ENDCALL();
-    return true;
+    return result;
 }
 
 bool Eluna::OnExpire(Player* pPlayer, ItemTemplate const* pProto)
@@ -458,25 +507,29 @@ bool Eluna::OnRemove(Player* pPlayer, Item* item)
 // Player
 bool Eluna::OnCommand(Player* player, const char* text)
 {
+    // If from console, player is NULL
     std::string fullcmd(text);
-    char* creload = strtok((char*)text, " ");
-    char* celuna = strtok(NULL, "");
-    if (creload && celuna)
+    if (!player || player->GetSession()->GetSecurity() >= SEC_ADMINISTRATOR)
     {
-        std::string reload(creload);
-        std::string eluna(celuna);
-        std::transform(reload.begin(), reload.end(), reload.begin(), ::tolower);
-        if (reload == "reload")
+        char* creload = strtok((char*)text, " ");
+        char* celuna = strtok(NULL, "");
+        if (creload && celuna)
         {
-            std::transform(eluna.begin(), eluna.end(), eluna.begin(), ::tolower);
-            if (std::string("eluna").find(eluna) == 0)
+            std::string reload(creload);
+            std::string eluna(celuna);
+            std::transform(reload.begin(), reload.end(), reload.begin(), ::tolower);
+            if (reload == "reload")
             {
-                eWorld->SendServerMessage(SERVER_MSG_STRING, "Reloading Eluna...");
-                ReloadEluna();
-                return false;
+                std::transform(eluna.begin(), eluna.end(), eluna.begin(), ::tolower);
+                if (std::string("eluna").find(eluna) == 0)
+                {
+                    Eluna::reload = true;
+                    return false;
+                }
             }
         }
     }
+
     bool result = true;
     EVENT_BEGIN(PlayerEventBindings, PLAYER_EVENT_ON_COMMAND, return result);
     Push(L, player);

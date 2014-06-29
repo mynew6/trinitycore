@@ -28,8 +28,6 @@
 #include "CorpseMethods.h"
 #include "WeatherMethods.h"
 #include "VehicleMethods.h"
-#include "DetourNavMesh.h"
-
 
 void RegisterGlobals(lua_State* L)
 {
@@ -79,7 +77,7 @@ void RegisterGlobals(lua_State* L)
     lua_register(L, "GetMapById", &LuaGlobalFunctions::GetMapById);                                         // GetMapById(mapId, instance) - Returns map object of id specified. UNDOCUMENTED
 
     // Other
-    lua_register(L, "ReloadEluna", &LuaGlobalFunctions::ReloadEluna);                                       // ReloadEluna() - Reload's Eluna engine.
+    lua_register(L, "ReloadEluna", &LuaGlobalFunctions::ReloadEluna);                                       // ReloadEluna() - Reload's Eluna engine. Warning! Reloading should be used only for testing.
     lua_register(L, "SendWorldMessage", &LuaGlobalFunctions::SendWorldMessage);                             // SendWorldMessage(msg) - Sends a broadcast message to everyone
     lua_register(L, "WorldDBQuery", &LuaGlobalFunctions::WorldDBQuery);                                     // WorldDBQuery(sql) - Executes given SQL query to world database instantly and returns a QueryResult object
     lua_register(L, "WorldDBExecute", &LuaGlobalFunctions::WorldDBExecute);                                 // WorldDBExecute(sql) - Executes given SQL query to world database (not instant)
@@ -99,7 +97,7 @@ void RegisterGlobals(lua_State* L)
     lua_register(L, "Ban", &LuaGlobalFunctions::Ban);                                                       // Ban(banMode(integer), nameOrIP(string), duration(string), reason(string), player(whoBanned)) - Banmode: 0 account, 1 character, 2 IP
     lua_register(L, "SaveAllPlayers", &LuaGlobalFunctions::SaveAllPlayers);                                 // SaveAllPlayers() - Saves all players
     lua_register(L, "SendMail", &LuaGlobalFunctions::SendMail);                                             // SendMail(subject, text, receiverLowGUID[, senderLowGUID, stationary, delay, itemEntry, itemAmount, itemEntry2, itemAmount2...]) - Sends a mail to player with lowguid. use nil to use default values on optional arguments. UNDOCUMENTED
-    lua_register(L, "AddTaxiPath", &LuaGlobalFunctions::AddTaxiPath);                                       // AddTaxiPath(pathTable, mountA, mountH[, price, pathId]) - Adds a new taxi path. Returns the path's ID. Will replace an existing path if pathId provided and already used. path table structure: T = {{map, x, y, z[, actionFlag, delay, arrivalEvId, departEvId]}, {...}, ...} UDOCUMENTED
+    lua_register(L, "AddTaxiPath", &LuaGlobalFunctions::AddTaxiPath);                                       // AddTaxiPath(pathTable, mountA, mountH[, price, pathId]) - Adds a new taxi path. Returns the path's ID. Will replace an existing path if pathId provided and already used. mountIDs are NPC entries. path table structure: T = {{map, x, y, z[, actionFlag, delay, arrivalEvId, departEvId]}, {...}, ...}
     lua_register(L, "AddCorpse", &LuaGlobalFunctions::AddCorpse);                                           // AddCorpse(corpse) - Adds the player's corpse to the world. More specifically, the cell.
     lua_register(L, "RemoveCorpse", &LuaGlobalFunctions::RemoveCorpse);                                     // RemoveCorpse(corpse) - Removes the player's corpse from the world.
     lua_register(L, "ConvertCorpseForPlayer", &LuaGlobalFunctions::ConvertCorpseForPlayer);                 // ConvertCorpseFromPlayer(guid[, insignia]) - Converts the player's corpse to bones. Adding insignia for PvP is optional (true or false).
@@ -340,8 +338,8 @@ ElunaRegister<Unit> UnitMethods[] =
     { "PlayDirectSound", &LuaUnit::PlayDirectSound },                 // :PlayDirectSound(soundId, player) - Unit plays soundID to player, or everyone around if no player
     { "PlayDistanceSound", &LuaUnit::PlayDistanceSound },             // :PlayDistanceSound(soundId, player) - Unit plays soundID to player, or everyone around if no player. The sound fades the further you are
     { "Kill", &LuaUnit::Kill },                                       // :Kill(target, durabilityLoss) - Unit kills the target. Durabilityloss is true by default
-    { "StopSpellCast", &LuaUnit::StopSpellCast },                     // :StopSpellCast(spellId(optional)) - Stops the unit from casting a spell. If a spellId is defined, it will stop that unit from casting that spell
-    { "InterruptSpell", &LuaUnit::InterruptSpell },                   // :InterruptSpell(spellType, delayed(optional)) - Interrupts the unit's spell by the spellType. If delayed is true it will skip if the spell is delayed.
+    { "StopSpellCast", &LuaUnit::StopSpellCast },                     // :StopSpellCast([spellId]) - Stops the unit from casting a spell. If a spellId is defined, it will stop that unit from casting that spell
+    { "InterruptSpell", &LuaUnit::InterruptSpell },                   // :InterruptSpell(spellType[, delayed]) - Interrupts the unit's spell by the spellType. If delayed is true it will skip if the spell is delayed.
     { "SendChatMessageToPlayer", &LuaUnit::SendChatMessageToPlayer }, // :SendChatMessageToPlayer(type, lang, msg, target) - Unit sends a chat message to the given target player
     { "Emote", &LuaUnit::Emote },                                     // :Emote(emote)
     { "CountPctFromCurHealth", &LuaUnit::CountPctFromCurHealth },     // :CountPctFromCurHealth(int32 pct)
@@ -663,7 +661,7 @@ ElunaRegister<Player> PlayerMethods[] =
     { "UnbindInstance", &LuaPlayer::UnbindInstance },                                     // :UnbindInstance(map, difficulty) - Unbinds the player from an instance
     { "RemoveFromBattlegroundRaid", &LuaPlayer::RemoveFromBattlegroundRaid },             // :RemoveFromBattlegroundRaid() - Removes the player from a battleground or battlefield raid
 #if (!defined(TBC) && !defined(CLASSIC))
-    { "ResetAchievements", &LuaPlayer::ResetAchievements },                               // :ResetAchievements() - Resets playeräs achievements
+    { "ResetAchievements", &LuaPlayer::ResetAchievements },                               // :ResetAchievements() - Resets playerï¿½s achievements
 #endif
     { "KickPlayer", &LuaPlayer::KickPlayer },                                             // :KickPlayer() - Kicks player from server
     { "LogoutPlayer", &LuaPlayer::LogoutPlayer },                                         // :LogoutPlayer([save]) - Logs the player out and saves if true
@@ -699,7 +697,7 @@ ElunaRegister<Player> PlayerMethods[] =
 ElunaRegister<Creature> CreatureMethods[] =
 {
     // Getters
-    { "GetAITarget", &LuaCreature::GetAITarget },                                     // :GetAITarget(type[, playeronly, position, distance, aura]) - Get an unit in threat list
+    { "GetAITarget", &LuaCreature::GetAITarget },                                     // :GetAITarget(type[, playeronly, position, distance, aura]) - Get an unit in threat list. type can be 0 (random), 1 (topaggro), 2 (botaggro), 3 (nearest), 4 (farthest). If for example type 1 is used and position is 4, the 5th top aggro is selected, 0 is the top aggro (default). For random target position means the amount of top targets to choose from. positive distance tells that target should be within given radius, negative means target shouldnt be inside given radius. positive aura means target needs to have the aura, negative means target should not have the aura
     { "GetAITargets", &LuaCreature::GetAITargets },                                   // :GetAITargets() - Get units in threat list
     { "GetAITargetsCount", &LuaCreature::GetAITargetsCount },                         // :GetAITargetsCount() - Get threat list size
     { "GetHomePosition", &LuaCreature::GetHomePosition },                             // :GetHomePosition() - Returns x,y,z,o of spawn position
@@ -780,6 +778,7 @@ ElunaRegister<Creature> CreatureMethods[] =
     { "SaveToDB", &LuaCreature::SaveToDB },                           // :SaveToDB() - Saves to database
     { "SelectVictim", &LuaCreature::SelectVictim },                   // :SelectVictim() - Selects a victim
     { "MoveWaypoint", &LuaCreature::MoveWaypoint },                   // :MoveWaypoint()
+    { "UpdateEntry", &LuaCreature::UpdateEntry },                     // :UpdateEntry(entry[, dataGuidLow]) - Sets the creature's data from the given entry and guid. Guid can be left out.
 
     { NULL, NULL },
 };
@@ -1187,7 +1186,7 @@ template<typename T> const char* ElunaTemplate<T>::tname = NULL;
 template<typename T> bool ElunaTemplate<T>::manageMemory = false;
 #if (!defined(TBC) && !defined(CLASSIC))
 // fix compile error about accessing vehicle destructor
-template<> int ElunaTemplate<Vehicle>::gcT(lua_State* L)
+template<> int ElunaTemplate<Vehicle>::gcT(lua_State* /*L*/)
 {
     // If assert fails, should code mem management here or flag Vehicles not mem managed
     ASSERT(!manageMemory);

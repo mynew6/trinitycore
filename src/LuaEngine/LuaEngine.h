@@ -189,7 +189,7 @@ struct EventMgr
         Object* obj;    // Object to push
     };
 
-    EventMgr(Eluna& _E) : E(_E)
+    EventMgr(Eluna& _E): E(_E)
     {
     }
 
@@ -353,6 +353,7 @@ public:
     typedef std::set<std::string> ScriptPaths;
 
     static Eluna* GEluna;
+    static bool reload;
 
     lua_State* L;
     int userdata_table;
@@ -380,6 +381,8 @@ public:
     static ScriptPaths scripts;
     static void Initialize();
     static void Uninitialize();
+    // Use Eluna::reload = true; instead.
+    // This will be called on next update
     static void ReloadEluna();
     void static GetScripts(std::string path, ScriptPaths& scripts);
 
@@ -683,25 +686,36 @@ template<> Corpse* Eluna::CHECKOBJ<Corpse>(lua_State* L, int narg, bool error);
 
 // #define ELUNA_GUARD() ACE_Guard< ACE_Recursive_Thread_Mutex > ELUNA_GUARD_OBJECT(sEluna->lock);
 
-template<typename T>
-struct EventBind
+struct ElunaBind
 {
-    typedef std::vector<int> ElunaBindingMap;
-    typedef std::map<int, ElunaBindingMap> ElunaEntryMap;
-
     Eluna& E;
+    const char* groupName;
 
-    EventBind(Eluna& _E): E(_E)
+    ElunaBind(const char* bindGroupName, Eluna& _E): E(_E), groupName(bindGroupName)
     {
     }
 
-    ~EventBind()
+    virtual ~ElunaBind()
     {
         Clear();
     }
 
+    // unregisters all registered functions and clears all registered events from the bindings
+    virtual void Clear() {};
+};
+
+template<typename T>
+struct EventBind : ElunaBind
+{
+    typedef std::vector<int> ElunaBindingMap;
+    typedef std::map<int, ElunaBindingMap> ElunaEntryMap;
+
+    EventBind(const char* bindGroupName, Eluna& _E): ElunaBind(bindGroupName, _E)
+    {
+    }
+
     // unregisters all registered functions and clears all registered events from the bind std::maps (reset)
-    void Clear()
+    void Clear() override
     {
         for (ElunaEntryMap::iterator itr = Bindings.begin(); itr != Bindings.end(); ++itr)
         {
@@ -743,23 +757,17 @@ struct EventBind
 };
 
 template<typename T>
-struct EntryBind
+struct EntryBind : ElunaBind
 {
     typedef std::map<int, int> ElunaBindingMap;
     typedef UNORDERED_MAP<uint32, ElunaBindingMap> ElunaEntryMap;
 
-    Eluna& E;
-
-    EntryBind(Eluna& _E): E(_E)
+    EntryBind(const char* bindGroupName, Eluna& _E): ElunaBind(bindGroupName, _E)
     {
     }
 
-    ~EntryBind()
-    {
-        Clear();
-    }
-
-    void Clear() // unregisters all registered functions and clears all registered events from the bind std::maps (reset)
+    // unregisters all registered functions and clears all registered events from the bindmap
+    void Clear() override
     {
         for (ElunaEntryMap::iterator itr = Bindings.begin(); itr != Bindings.end(); ++itr)
         {

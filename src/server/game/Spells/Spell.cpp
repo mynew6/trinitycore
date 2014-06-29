@@ -1519,8 +1519,24 @@ void Spell::SelectImplicitTrajTargets(SpellEffIndex effIndex)
     std::list<WorldObject*>::const_iterator itr = targets.begin();
     for (; itr != targets.end(); ++itr)
     {
+        if (!m_caster->HasInLine(*itr, 5.0f))
+            continue;
+
+        if (m_spellInfo->CheckTarget(m_caster, *itr, true) != SPELL_CAST_OK)
+            continue;
+
         if (Unit* unitTarget = (*itr)->ToUnit())
-            if (m_caster == *itr || m_caster->IsOnVehicle(unitTarget) || (unitTarget)->GetVehicle())//(*itr)->IsOnVehicle(m_caster))
+        {
+            if (m_caster == *itr || m_caster->IsOnVehicle(unitTarget) || unitTarget->GetVehicle())
+                continue;
+
+            if (Creature* creatureTarget = unitTarget->ToCreature())
+            {
+                if (!(creatureTarget->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_PROJECTILE_COLLISION))
+                    continue;
+            }
+        }
+
                 continue;
 
         const float size = std::max((*itr)->GetObjectSize() * 0.7f, 1.0f); // 1/sqrt(3)

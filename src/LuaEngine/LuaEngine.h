@@ -21,7 +21,7 @@ extern "C"
 #include <ace/Atomic_Op.h>
 // enums & singletons
 #include "HookMgr.h"
-#ifdef MANGOS
+#ifndef TRINITY
 #include "AccountMgr.h"
 #include "Config/Config.h"
 #include "Player.h"
@@ -35,7 +35,7 @@ extern "C"
 #include "Weather.h"
 #include "World.h"
 
-#ifdef MANGOS
+#ifndef TRINITY
 typedef SpellEffectIndex SpellEffIndex;
 typedef SpellEntry SpellInfo;
 typedef ItemPrototype ItemTemplate;
@@ -46,7 +46,7 @@ typedef int Difficulty;
 #endif
 
 struct AreaTriggerEntry;
-#ifdef MANGOS
+#ifndef TRINITY
 class ReactorAI;
 typedef ReactorAI ScriptedAI;
 #else
@@ -82,7 +82,7 @@ typedef VehicleInfo Vehicle;
 #endif
 #endif
 
-#ifdef MANGOS
+#ifndef TRINITY
 #define eWorld                  (&sWorld)
 #define eMapMgr                 (&sMapMgr)
 #define eConfigMgr              (&sConfig)
@@ -423,7 +423,7 @@ public:
 
     static inline uint32 GetCurrTime()
     {
-#ifdef MANGOS
+#ifndef TRINITY
         return WorldTimer::getMSTime();
 #else
         return getMSTime();
@@ -432,7 +432,7 @@ public:
 
     static inline uint32 GetTimeDiff(uint32 oldMSTime)
     {
-#ifdef MANGOS
+#ifndef TRINITY
         return WorldTimer::getMSTimeDiff(oldMSTime, GetCurrTime());
 #else
         return GetMSTimeDiffToNow(oldMSTime);
@@ -484,7 +484,7 @@ public:
                 return false;
             if (Unit* unit = u->ToUnit())
             {
-#ifdef MANGOS
+#ifdef CMANGOS
                 if (!unit->isAlive())
                     return false;
 #else
@@ -516,7 +516,7 @@ public:
     };
 
     CreatureAI* GetAI(Creature* creature);
-#ifndef MANGOS
+#ifdef TRINITY
     GameObjectAI* GetAI(GameObject* gameObject);
 #endif
 
@@ -859,28 +859,35 @@ public:
         luaL_newmetatable(L, tname);
         int metatable = lua_gettop(L);
 
+        // tostring
+        lua_pushcfunction(L, tostringT);
+        lua_setfield(L, metatable, "__tostring");
+
+        // garbage collecting
+        if (manageMemory)
+        {
+            lua_pushcfunction(L, gcT);
+            lua_setfield(L, metatable, "__gc");
+        }
+
         // hide metatable
         lua_pushvalue(L, methods);
         lua_setfield(L, metatable, "__metatable");
 
-        // required to access methods
+        // make methods accessible through metatable
         lua_pushvalue(L, methods);
         lua_setfield(L, metatable, "__index");
 
-        // metamethods
-        lua_pushcfunction(L, tostringT);
-        lua_setfield(L, metatable, "__tostring");
-
-        lua_pushcfunction(L, gcT);
-        lua_setfield(L, metatable, "__gc");
+        // make new indexes saved to methods
+        lua_pushvalue(L, methods);
+        lua_setfield(L, metatable, "__newindex");
 
         // special method to get the object type
         lua_pushcfunction(L, typeT);
-        lua_setfield(L, methods, "GetObjectType");
+        lua_setfield(L, metatable, "GetObjectType");
 
-        lua_setmetatable(L, methods);
-
-        lua_remove(L, methods);
+        // pop methods and metatable
+        lua_pop(L, 2);
     }
 
     template<typename C>
@@ -897,7 +904,7 @@ public:
             return;
         }
 
-        lua_getfield(L, -1, "__metatable");
+        lua_getfield(L, -1, "__index");
         lua_remove(L, -2);
         if (!lua_istable(L, -1))
         {

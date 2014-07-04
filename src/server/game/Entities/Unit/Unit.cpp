@@ -7233,10 +7233,25 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                 triggered_spell_id = 51460;
                 break;
             }
-            if (dummySpell->SpellIconID == 2711)
+            //恩赐解脱
+            if (dummySpell->SpellIconID == 60000)
             {
                 basepoints0 = CalculatePct(int32(damage), triggerAmount);
-                triggered_spell_id = 95024;
+                triggered_spell_id = 95041;
+                break;
+            }
+            //无影剑
+            if (dummySpell->SpellIconID == 60001)
+            {
+                basepoints0 = CalculatePct(int32(damage), triggerAmount);
+                triggered_spell_id = 95043;
+                break;
+            }
+            //代达罗斯之殇
+            if (dummySpell->SpellIconID == 60002)
+            {
+                basepoints0 = CalculatePct(int32(damage), triggerAmount);
+                triggered_spell_id = 95045;
                 break;
             }
             // Threat of Thassarian

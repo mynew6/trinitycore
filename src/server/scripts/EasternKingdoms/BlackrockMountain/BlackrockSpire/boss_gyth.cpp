@@ -97,7 +97,7 @@ public:
         void UpdateAI(uint32 diff) override
         {
 
-            if (!SummonedRend && HealthBelowPct(5))
+            if (!SummonedRend && HealthBelowPct(40))
             {
                 DoCast(me, SPELL_SUMMON_REND);
                 me->RemoveAura(SPELL_REND_MOUNTS);

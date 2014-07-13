@@ -5389,6 +5389,14 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                     owner->RemoveAuraFromStack(34027);
                     return true;
                 }
+					// 疯狂面具
+				case 95065:
+				{
+							  triggered_spell_id = 95066;
+							  basepoints0 = damage * 0.2;
+							  target = this;
+							  break;
+				}
                 // Vampiric Touch (generic, used by some boss)
                 case 52723:
                 case 60501:
@@ -7207,28 +7215,28 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
                 break;
             }
             //恩赐解脱
-            if (dummySpell->SpellIconID == 60000)
+            if (dummySpell->Id == 95040)
             {
                 basepoints0 = CalculatePct(int32(damage), triggerAmount);
                 triggered_spell_id = 95041;
                 break;
             }
             //无影剑
-            if (dummySpell->SpellIconID == 60001)
+            if (dummySpell->Id == 95042)
             {
                 basepoints0 = CalculatePct(int32(damage), triggerAmount);
                 triggered_spell_id = 95043;
                 break;
             }
             //代达罗斯之殇
-            if (dummySpell->SpellIconID == 60002)
+            if (dummySpell->Id == 95044)
             {
                 basepoints0 = CalculatePct(int32(damage), triggerAmount);
                 triggered_spell_id = 95045;
                 break;
             }
             //恩赐解脱猎豹
-            if (dummySpell->SpellIconID == 60003)
+            if (dummySpell->Id == 95055)
             {
                 basepoints0 = CalculatePct(int32(damage), triggerAmount);
                 triggered_spell_id = 95056;

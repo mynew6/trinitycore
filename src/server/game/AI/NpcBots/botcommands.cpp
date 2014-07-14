@@ -291,15 +291,15 @@ public:
             handler->SendSysMessage(".npcbot lookup #class");
             handler->SendSysMessage("察看各种职业类型的机器人.");
             handler->PSendSysMessage("战士 = %u", uint32(BOT_CLASS_WARRIOR));
-            handler->PSendSysMessage("圣骑士 = %u", uint32(BOT_CLASS_PALADIN));
+            handler->PSendSysMessage("圣骑士　 = %u", uint32(BOT_CLASS_PALADIN));
             handler->PSendSysMessage("猎人 = %u", uint32(BOT_CLASS_HUNTER));
-            handler->PSendSysMessage("潜行者 = %u", uint32(BOT_CLASS_ROGUE));
+            handler->PSendSysMessage("潜行者　 = %u", uint32(BOT_CLASS_ROGUE));
             handler->PSendSysMessage("牧师 = %u", uint32(BOT_CLASS_PRIEST));
             handler->PSendSysMessage("死亡骑士 = %u", uint32(BOT_CLASS_DEATH_KNIGHT));
             handler->PSendSysMessage("萨满 = %u", uint32(BOT_CLASS_SHAMAN));
             handler->PSendSysMessage("法师 = %u", uint32(BOT_CLASS_MAGE));
             handler->PSendSysMessage("术士 = %u", uint32(BOT_CLASS_WARLOCK));
-            handler->PSendSysMessage("德鲁伊 = %u", uint32(BOT_CLASS_DRUID));
+            handler->PSendSysMessage("德鲁伊　 = %u", uint32(BOT_CLASS_DRUID));
             handler->PSendSysMessage("剑圣 = %u", uint32(BOT_CLASS_BM));
             handler->SetSentErrorMessage(true);
             return false;

@@ -80,9 +80,13 @@ enum UlduarNPCs
     NPC_ALGALON                             = 32871,
 
     // Mimiron
-    NPC_LEVIATHAN_MKII                      = 33432,
-    NPC_VX_001                              = 33651,
-    NPC_AERIAL_COMMAND_UNIT                 = 33670,
+    NPC_LEVIATHAN_MKII           = 33432,
+    NPC_VX_001                   = 33651,
+    NPC_AERIAL_COMMAND_UNIT      = 33670,
+
+    // Thorim
+    NPC_RUNIC_COLOSSUS          = 32872,
+    NPC_RUNE_GIANT              = 32873,	
 
     // Freya's Keepers
     NPC_IRONBRANCH                          = 32913,
@@ -167,6 +171,9 @@ enum UlduarNPCs
 enum UlduarGameObjects
 {
     // Leviathan
+	GO_THORIM_ENCOUNTER_DOOR              = 194559,
+	GO_THORIM_RUNIC_DOOR                  = 194557,
+	GO_THORIM_STONE_DOOR                  = 194558,
     GO_LEVIATHAN_DOOR                       = 194905,
     GO_LEVIATHAN_GATE                       = 194630,
 
@@ -177,6 +184,11 @@ enum UlduarGameObjects
     GO_RAZOR_HARPOON_3                      = 194543,
     GO_RAZOR_HARPOON_4                      = 194519,
     GO_RAZOR_BROKEN_HARPOON                 = 194565,
+
+    GO_MIMIRON_ELEVATOR                   = 194749,
+    GO_MIMIRON_TRAIN                      = 194675,
+
+    GO_WAY_TO_YOGG                        = 194255,
 
     // XT-002
     GO_XT_002_DOOR                          = 194631,
@@ -190,7 +202,11 @@ enum UlduarGameObjects
     GO_KOLOGARN_CHEST                       = 195046,
     GO_KOLOGARN_BRIDGE                      = 194232,
     GO_KOLOGARN_DOOR                        = 194553,
-
+	
+	GO_MIMIRON_DOOR_1                     = 194776,
+    GO_MIMIRON_DOOR_2                     = 194774,
+    GO_MIMIRON_DOOR_3                     = 194775,
+	
     // Hodir
     GO_HODIR_ENTRANCE                       = 194442,
     GO_HODIR_DOOR                           = 194634,
@@ -204,6 +220,8 @@ enum UlduarGameObjects
     GO_THORIM_CHEST_HERO                    = 194315,
     GO_THORIM_CHEST                         = 194314,
 
+	GO_BIG_RED_BUTTON                     = 194739,
+	
     // Vezax
     GO_VEZAX_DOOR                           = 194750,
 
@@ -288,6 +306,20 @@ enum UlduarData
     DATA_STEELBREAKER,
     DATA_MOLGEIM,
     DATA_BRUNDIR,
+
+	//Mimiron
+    DATA_LEVIATHAN_MK_II,
+    DATA_VX_001,
+    DATA_AERIAL_UNIT,
+    DATA_MIMIRON_ELEVATOR,
+    DATA_CALL_TRAM,
+
+	// Thorim
+    DATA_RUNIC_COLOSSUS,
+    DATA_RUNE_GIANT,
+    DATA_RUNIC_DOOR,
+    DATA_STONE_DOOR,
+    DATA_HODIR_RARE_CHEST,
 
     // Hodir
     DATA_HODIR_RARE_CACHE,

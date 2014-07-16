@@ -114,11 +114,11 @@ bool Group::Create(Player* leader)
 
     //npcbot - set loot mode on create
     if (leader->HaveBot()) //player + npcbot so set to free-for-all on create
-        m_lootMethod = FREE_FOR_ALL;
+        m_lootMethod = NEED_BEFORE_GREED;
     else
     //end npcbot
     if (!isLFGGroup())
-        m_lootMethod = GROUP_LOOT;
+        m_lootMethod = NEED_BEFORE_GREED;
 
     m_lootThreshold = ITEM_QUALITY_UNCOMMON;
     m_looterGuid = leaderGuid;

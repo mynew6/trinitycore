@@ -451,8 +451,8 @@ void BotMgr::RemoveAllBots(uint8 removetype)
 void BotMgr::RemoveBot(uint64 guid, uint8 removetype)
 {
     BotMap::const_iterator itr = _bots.find(guid);
-    ASSERT(itr != _bots.end() && "Trying to remove bot which does not belong to this botmgr(a)!!");
-    ASSERT(_owner->IsInWorld() && "Trying to remove bot while not in world(a)!!");
+    //ASSERT(itr != _bots.end() && "Trying to remove bot which does not belong to this botmgr(a)!!");
+    //ASSERT(_owner->IsInWorld() && "Trying to remove bot while not in world(a)!!");
 
     //trying to remove temp bot second time means removing all bots
     //just erase from bots because already cleaned up

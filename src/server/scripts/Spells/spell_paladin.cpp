@@ -271,14 +271,14 @@ class spell_pal_ardent_defender1 : public SpellScriptLoader
 
             void Register() override
             {
-                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_pal_ardent_defender1_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
-                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_pal_ardent_defender1_AuraScript::Absorb, EFFECT_0);
+                 DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_pal_ardent_defender_AuraScript::CalculateAmount, EFFECT_0, SPELL_AURA_SCHOOL_ABSORB);
+                 OnEffectAbsorb += AuraEffectAbsorbFn(spell_pal_ardent_defender_AuraScript::Absorb, EFFECT_0);
             }
         };
 
         AuraScript* GetAuraScript() const override
         {
-            return new spell_pal_ardent_defender1_AuraScript();
+            return new spell_pal_ardent_defender_AuraScript();
         }
 };
 

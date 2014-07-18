@@ -303,7 +303,8 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recvData)
     data << uint32(matchcount);                           // placeholder, count of players matching criteria
     data << uint32(displaycount);                         // placeholder, count of players displayed
 
-    TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
+    boost::shared_lock<boost::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
+
     HashMapHolder<Player>::MapType const& m = sObjectAccessor->GetPlayers();
     for (HashMapHolder<Player>::MapType::const_iterator itr = m.begin(); itr != m.end(); ++itr)
     {
@@ -550,7 +551,7 @@ void WorldSession::HandleZoneUpdateOpcode(WorldPacket& recvData)
 
     // use server side data, but only after update the player position. See Player::UpdatePosition().
     GetPlayer()->SetNeedsZoneUpdate(true);
- 
+
     //GetPlayer()->SendInitWorldStates(true, newZone);
 }
 

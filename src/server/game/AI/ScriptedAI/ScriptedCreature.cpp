@@ -459,10 +459,7 @@ BossAI::BossAI(Creature* creature, uint32 bossId) : ScriptedAI(creature),
     instance(creature->GetInstanceScript()),
     summons(creature),
     _boundary(instance ? instance->GetBossBoundary(bossId) : NULL),
-    _bossId(bossId)
-{
-    SetImmuneToPushPullEffects(true);
-}
+    _bossId(bossId) { }
 
 void BossAI::_Reset()
 {
@@ -474,7 +471,6 @@ void BossAI::_Reset()
     summons.DespawnAll();
     if (instance)
         instance->SetBossState(_bossId, NOT_STARTED);
-    inFightAggroCheck_Timer = MAX_AGGRO_PULSE_TIMER;
 }
 
 void BossAI::_JustDied()
@@ -667,13 +663,3 @@ void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& list, WorldObject*
 {
     source->GetGameObjectListWithEntryInGrid(list, entry, maxSearchRange);
 }
-
-void BossAI::_DoAggroPulse(const uint32 diff)
- {
-     if(inFightAggroCheck_Timer < diff)
-     {
-         if(me->GetVictim() && me->GetVictim()->ToPlayer())
-             DoAttackerGroupInCombat(me->GetVictim()->ToPlayer());
-         inFightAggroCheck_Timer = MAX_AGGRO_PULSE_TIMER;
-     }else inFightAggroCheck_Timer -= diff;
- }

@@ -24,9 +24,7 @@
 #include "CreatureAIImpl.h"
 #include "InstanceScript.h"
 
-#define MAX_AGGRO_PULSE_TIMER            5000
 #define CAST_AI(a, b)   (dynamic_cast<a*>(b))
-#define CAST_CRE(a)     (dynamic_cast<Creature*>(a))
 
 class InstanceScript;
 
@@ -35,7 +33,6 @@ class SummonList
 public:
     typedef std::list<uint64> StorageType;
     typedef StorageType::iterator iterator;
-    void DoAction(uint32 entry, int32 info);
     typedef StorageType::const_iterator const_iterator;
     typedef StorageType::size_type size_type;
     typedef StorageType::value_type value_type;
@@ -326,12 +323,6 @@ struct ScriptedAI : public CreatureAI
         return heroic25;
     }
 
-    void SetImmuneToPushPullEffects(bool set)
-    {
-        me->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_KNOCK_BACK, set);
-        me->ApplySpellImmune(0, IMMUNITY_MECHANIC, MECHANIC_GRIP, set);
-    }
-    
     private:
         Difficulty _difficulty;
         uint32 _evadeCheckCooldown;
@@ -346,7 +337,6 @@ class BossAI : public ScriptedAI
         virtual ~BossAI() { }
 
         InstanceScript* const instance;
-        uint32 inFightAggroCheck_Timer;
         BossBoundaryMap const* GetBoundary() const { return _boundary; }
 
         void JustSummoned(Creature* summon);
@@ -370,7 +360,6 @@ class BossAI : public ScriptedAI
         void _EnterCombat();
         void _JustDied();
         void _JustReachedHome() { me->setActive(false); }
-        void _DoAggroPulse(const uint32 diff);
 
         bool CheckInRoom()
         {

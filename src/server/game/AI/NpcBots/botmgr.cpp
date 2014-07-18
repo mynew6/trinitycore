@@ -172,7 +172,7 @@ void BotMgr::Update(uint32 diff)
 
         if (ai->GetReviveTimer() <= diff)
         {
-            if (bot->isDead() && _owner->IsAlive() && !_owner->IsInCombat() && !_owner->IsBeingTeleported() && !_owner->InArena() &&
+            if (bot->isDead() &&  !_owner->IsBeingTeleported() && !_owner->InArena() &&
                 !_owner->IsInFlight() && !_owner->HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH) &&
                 !_owner->HasInvisibilityAura() && !_owner->HasStealthAura())
             {
@@ -183,7 +183,7 @@ void BotMgr::Update(uint32 diff)
             ai->SetReviveTimer(urand(1000, 5000));
         }
 
-        if (_owner->IsAlive() && bot->IsAlive() && !ai->IsTempBot() && !ai->IsDuringTeleport() &&
+        if (_owner->IsAlive()  && !ai->IsTempBot() && !ai->IsDuringTeleport() &&
             (RestrictBots(bot, false) ||
             bot->GetMap() != _owner->GetMap() ||
             (bot->GetBotCommandState() != COMMAND_STAY && _owner->GetDistance(bot) > SIZE_OF_GRIDS)))
@@ -402,7 +402,7 @@ void BotMgr::CleanupsBeforeBotDelete(uint64 guid)
 {
     BotMap::const_iterator itr = _bots.find(guid);
     ASSERT(itr != _bots.end() && "Trying to remove bot which does not belong to this botmgr(b)!!");
-    ASSERT(_owner->IsInWorld() && "Trying to remove bot while not in world(b)!!");
+    //ASSERT(_owner->IsInWorld() && "Trying to remove bot while not in world(b)!!");
 
     Creature* bot = itr->second;
 

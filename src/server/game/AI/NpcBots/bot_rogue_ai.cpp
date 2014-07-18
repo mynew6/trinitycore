@@ -1,6 +1,6 @@
 #include "bot_ai.h"
 //#include "botmgr.h"
-//#include "Group.h"
+#include "Group.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
@@ -104,7 +104,7 @@ public:
         void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
         void JustDied(Unit* u) { comboPoints = 0; tempComboPoints = 0; bot_minion_ai::JustDied(u); }
         void DoNonCombatActions(uint32 /*diff*/)
-        {}
+        { RezGroup(GetSpell(REBIRTH_1), master); }
 
         //This method should be used to emulate energy usage reduction
         void modenergy(int32 mod, bool set = false)
@@ -159,6 +159,8 @@ public:
 
             if (!me->IsInCombat())
                 DoNonCombatActions(diff);
+            else
+                CheckBattleRez(diff);
 
             if (!CheckAttackTarget(BOT_CLASS_ROGUE))
                 return;
@@ -392,6 +394,61 @@ public:
                 pctbonus += 0.1f;
 
             damage = int32(fdamage * (1.0f + pctbonus));
+        }
+
+        void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                    BotWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+                    BotWhisper("Rezzing You", tPlayer);
+                    return;
+                }
+            }
         }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
@@ -717,6 +774,7 @@ public:
             InitSpellMap(BACKSTAB_1);
             InitSpellMap(SINISTER_STRIKE_1);
             InitSpellMap(SLICE_DICE_1);
+            InitSpellMap(REBIRTH_1);
             InitSpellMap(EVISCERATE_1);
             InitSpellMap(KICK_1);
             InitSpellMap(RUPTURE_1);
@@ -763,6 +821,8 @@ public:
 
         enum RogueBaseSpells
         {
+            REBIRTH_1                           = 95006,
+
             BACKSTAB_1                          = 53,
             SINISTER_STRIKE_1                   = 1757,
             SLICE_DICE_1                        = 5171,

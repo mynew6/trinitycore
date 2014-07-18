@@ -656,7 +656,7 @@ public:
             if (GC_Timer > diff || me->IsMounted() || IsCasting())
                 return;
 
-            RezGroup(GetSpell(REVIVE_1), master);
+            RezGroup(GetSpell(REBIRTH_1), master);
 
             //if (Feasting()) return;
 
@@ -793,10 +793,10 @@ public:
                     target = (Unit*)master->GetCorpse();
                 if (!target || !target->IsInWorld())
                     return;
-                if (me->GetExactDist(target) > 30)
+                if (me->GetExactDist(target) > 75)
                 {
                     me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
-                    SetSpellCooldown(REBIRTH_1, 1500);
+                    SetSpellCooldown(REBIRTH_1, 0);
                     return;
                 }
                 else if (!target->IsWithinLOSInMap(me))
@@ -817,10 +817,10 @@ public:
                     target = (Unit*)tPlayer->GetCorpse();
                 if (!target || !target->IsInWorld()) continue;
                 if (master->GetMap() != target->FindMap()) continue;
-                if (me->GetExactDist(target) > 30)
+                if (me->GetExactDist(target) > 75)
                 {
                     me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
-                    SetSpellCooldown(REBIRTH_1, 1500);
+                    SetSpellCooldown(REBIRTH_1, 0);
                     return;
                 }
                 else if (!target->IsWithinLOSInMap(me))
@@ -1308,7 +1308,7 @@ public:
      /*tal*/SWIFTMEND_1                         = 18562,
             TRANQUILITY_1                       = 740,
             REVIVE_1                            = 50769,
-            REBIRTH_1                           = 20484,
+            REBIRTH_1                           = 95006,
             BEAR_FORM_1                         = 5487,
             SWIPE_1                             = 779,
      /*tal*/MANGLE_BEAR_1                       = 33878,

@@ -358,6 +358,8 @@ public:
             if (GC_Timer > diff || IsCasting() || Feasting() || Rand() > 20)
                 return;
 
+            RezGroup(GetSpell(REBIRTH_1), master);
+
             //PATH OF FROST
             if (GetSpell(PATH_OF_FROST_1) && HaveRune(RUNE_FROST)/* && !me->IsMounted()*/) //works while mounted
             {
@@ -587,6 +589,8 @@ public:
             }
             if (!me->IsInCombat())
                 DoNonCombatActions(diff);
+            else
+                CheckBattleRez(diff);
 
             CheckPresence(diff);
 
@@ -1298,6 +1302,61 @@ public:
 
             OnSpellHit(caster, spell);
         }
+        
+        void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                    BotWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+                    BotWhisper("Rezzing You", tPlayer);
+                    return;
+                }
+            }
+        }
 
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
         {
@@ -1388,7 +1447,7 @@ public:
             InitSpellMap(OBLITERATE_1);
             InitSpellMap(RUNE_STRIKE_1);
   /*Talent*/InitSpellMap(HEART_STRIKE_1);
-
+            InitSpellMap(REBIRTH_1);
             InitSpellMap(BLOOD_BOIL_1);
             InitSpellMap(DEATH_AND_DECAY_1);
   /*Talent*/lvl >= 63 ? InitSpellMap(HOWLING_BLAST_1) : RemoveSpell(HOWLING_BLAST_1);
@@ -1497,6 +1556,8 @@ public:
 
         enum DeathKnightBaseSpells
         {
+            REBIRTH_1                           = 95006,
+
             BLOOD_STRIKE_1                      = 45902,
             ICY_TOUCH_1                         = 45477,
             PLAGUE_STRIKE_1                     = 45462,

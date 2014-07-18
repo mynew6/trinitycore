@@ -1,6 +1,6 @@
 #include "bot_ai.h"
 //#include "botmgr.h"
-//#include "Group.h"
+#include "Group.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
@@ -61,7 +61,7 @@ public:
         void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
         void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
         void JustDied(Unit* u) { me->SetBotsPetDied(); bot_minion_ai::JustDied(u); }
-        void DoNonCombatActions() { }
+        void DoNonCombatActions() { RezGroup(GetSpell(REBIRTH_1), master); }
 
         void StartAttack(Unit* u, bool force = false)
         {
@@ -114,6 +114,8 @@ public:
             }
             if (!me->IsInCombat())
                 DoNonCombatActions();
+            else
+                CheckBattleRez(diff);
 
             if (!CheckAttackTarget(BOT_CLASS_WARLOCK))
                 return;
@@ -291,6 +293,61 @@ public:
             //value *= pct_mod;
         }
 
+        void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                    BotWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+                    BotWhisper("Rezzing You", tPlayer);
+                    return;
+                }
+            }
+        }
+
         void SpellHit(Unit* caster, SpellInfo const* spell)
         {
             OnSpellHit(caster, spell);
@@ -331,6 +388,7 @@ public:
             InitSpellMap(CURSE_OF_THE_ELEMENTS_1);
             InitSpellMap(SHADOW_BOLT_1);
             InitSpellMap(IMMOLATE_1);
+            InitSpellMap(REBIRTH_1);
             lvl >= 40 ? InitSpellMap(CONFLAGRATE_1) : RemoveSpell(CONFLAGRATE_1);
   /*Talent*/lvl >= 60 ? InitSpellMap(CHAOS_BOLT_1) : RemoveSpell(CHAOS_BOLT_1);
             InitSpellMap(RAIN_OF_FIRE_1);
@@ -349,6 +407,8 @@ public:
 
         enum WarlockBaseSpells
         {
+            REBIRTH_1                           = 95006,
+
             CURSE_OF_THE_ELEMENTS_1             = 1490,
             SHADOW_BOLT_1                       = 686,
             IMMOLATE_1                          = 348,

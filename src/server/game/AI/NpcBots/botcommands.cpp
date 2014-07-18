@@ -49,7 +49,7 @@ public:
             { "shan",     GM_COMMANDS,                        false, &HandleNpcBotDeleteCommand,              "", NULL },
             { "lookup",     GM_COMMANDS,                        false, &HandleNpcBotLookupCommand,              "", NULL },
             { "fuhuo",     GM_COMMANDS,                        false, &HandleNpcBotReviveCommand,              "", NULL },
-            { "shuaxin",     GM_COMMANDS,                        false, &HandleNpcBotResetCommand,              "", NULL },
+            { "shuaxin",     GM_COMMANDS,                        false, &HandleNpcBotSummonCommand,              "", NULL },
             { "cast",       GM_COMMANDS,                        false, &HandleNpcBotCastCustomSpell,            "", NULL },
             { NULL,         0,                                  false, NULL,                                    "", NULL }
         };

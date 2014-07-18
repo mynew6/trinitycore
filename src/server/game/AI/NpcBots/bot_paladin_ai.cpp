@@ -113,6 +113,7 @@ public:
                     uint32 spell = GetSpell(CLEANSE_1) &&
                         (spellInfo->Dispel == DISPEL_MAGIC ||
                         spellInfo->Dispel == DISPEL_DISEASE ||
+                        spellInfo->Dispel == DISPEL_CURSE ||
                         spellInfo->Dispel == DISPEL_POISON) ? GetSpell(CLEANSE_1) : GetSpell(HOF_1);
 
                     if (doCast(target, spell))
@@ -386,6 +387,9 @@ public:
             }
             if (!me->IsInCombat())
                 DoNonCombatActions(diff);
+            else
+                CheckBattleRez(diff);
+
             //buff
             if (IsSpellReady(SEAL_OF_COMMAND_1, diff, false) && Rand() < 20 && !HasAuraName(me, SEAL_OF_COMMAND_1) &&
                 doCast(me, GetSpell(SEAL_OF_COMMAND_1)))
@@ -408,7 +412,7 @@ public:
             if (GC_Timer > diff || me->IsMounted() || IsCasting())
                 return;
 
-            RezGroup(GetSpell(REDEMPTION_1), master);
+            RezGroup(GetSpell(REBIRTH_1), master);
 
             if (Feasting())
                 return;
@@ -582,6 +586,61 @@ public:
                 target = FindCastingTarget(10);
                 if (target && doCast(opponent, GetSpell(HAMMER_OF_JUSTICE_1)))
                 {}
+            }
+        }
+
+        void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                    BotWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+                    BotWhisper("Rezzing You", tPlayer);
+                    return;
+                }
             }
         }
 
@@ -931,6 +990,7 @@ public:
             InitSpellMap(HOLY_LIGHT_1);
             InitSpellMap(LAY_ON_HANDS_1);
             InitSpellMap(SACRED_SHIELD_1);
+            InitSpellMap(REBIRTH_1);
   /*Talent*/lvl >= 40 ? InitSpellMap(HOLY_SHOCK_1) : RemoveSpell(HOLY_SHOCK_1);
             InitSpellMap(CLEANSE_1);
             InitSpellMap(REDEMPTION_1);
@@ -1070,6 +1130,8 @@ public:
 
         enum PaladinBaseSpells// all orignals
         {
+            REBIRTH_1                           = 95006,
+
             FLASH_OF_LIGHT_1                    = 19750,
             HOLY_LIGHT_1                        = 635,
             LAY_ON_HANDS_1                      = 633,
@@ -1077,7 +1139,7 @@ public:
             HOF_1  /*Hand of Freedom*/          = 1044,
             SACRED_SHIELD_1                     = 53601,
             HOLY_SHOCK_1                        = 20473,
-            CLEANSE_1                           = 4987,
+            CLEANSE_1                           = 95014,
             HAND_OF_PROTECTION_1                = 1022,
             HOS_1 /*Hand of salvation*/         = 1038,
             SEAL_OF_COMMAND_1                   = 20375,

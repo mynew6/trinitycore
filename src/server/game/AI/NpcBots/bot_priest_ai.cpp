@@ -208,7 +208,6 @@ public:
             MassGroupHeal(master, diff);
             BuffAndHealGroup(master, diff);
             CureGroup(master, GetSpell(DISPEL_MAGIC_1), diff);
-            CureGroup(master, GetSpell(CURE_DISEASE_1), diff);
             //ShieldGroup(master);
             if (master->IsInCombat() || me->IsInCombat())
             {
@@ -216,10 +215,12 @@ public:
                 CheckSilence(diff);
             }
 
-            if (me->IsInCombat())
+            if (me->IsInCombat()) {
+                CheckBattleRez(diff);
                 CheckShackles(diff);
-            else
+            } else {
                 DoNonCombatActions(diff);
+            }
 
             if (!CheckAttackTarget(BOT_CLASS_PRIEST))
                 return;
@@ -466,7 +467,7 @@ public:
             if (GC_Timer > diff || me->IsMounted() || IsCasting())
                 return;
 
-            RezGroup(GetSpell(RESURRECTION_1), master);
+            RezGroup(GetSpell(REBIRTH_1), master);
 
             //if (Feasting())
             //    return;
@@ -483,7 +484,7 @@ public:
                 return;
 
             uint32 DM = GetSpell(DISPEL_MAGIC_1);
-            uint32 MD = GetSpell(MASS_DISPEL_1);
+			uint32 MD = GetSpell(DISPEL_MAGIC_1);
 
             if (!DM && !MD)
                 return;
@@ -643,6 +644,61 @@ public:
             }
 
             SetSpellCooldown(DISPERSION_1, 2000); //fail
+        }
+
+        void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                    BotWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+                    BotWhisper("Rezzing You", tPlayer);
+                    return;
+                }
+            }
         }
 
         void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool& crit) const
@@ -869,8 +925,7 @@ public:
         {
             uint8 lvl = me->getLevel();
             InitSpellMap(DISPEL_MAGIC_1);
-            InitSpellMap(MASS_DISPEL_1);
-            InitSpellMap(CURE_DISEASE_1);
+            InitSpellMap(REBIRTH_1);
             InitSpellMap(FEAR_WARD_1);
   /*Talent*/lvl >= 50 ? InitSpellMap(PAIN_SUPPRESSION_1) : RemoveSpell(PAIN_SUPPRESSION_1);
             InitSpellMap(PSYCHIC_SCREAM_1);
@@ -946,8 +1001,6 @@ public:
             switch (basespell)
             {
                 case DISPEL_MAGIC_1:
-                case MASS_DISPEL_1:
-                case CURE_DISEASE_1:
                 case FEAR_WARD_1:
                 case PAIN_SUPPRESSION_1:
                 case FADE_1:
@@ -981,9 +1034,9 @@ public:
 
         enum PriestBaseSpells
         {
-            DISPEL_MAGIC_1                      = 527,
-            MASS_DISPEL_1                       = 32375,
-            CURE_DISEASE_1                      = 528,
+            REBIRTH_1                           = 95006,
+
+            DISPEL_MAGIC_1                      = 95014,
             FEAR_WARD_1                         = 6346,
   /*Talent*/PAIN_SUPPRESSION_1                  = 33206,
             PSYCHIC_SCREAM_1                    = 8122,

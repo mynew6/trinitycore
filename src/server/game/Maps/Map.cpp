@@ -2888,11 +2888,11 @@ bool InstanceMap::CanEnter(Player* player)
     // cannot enter while an encounter is in progress on raids
     /*Group* group = player->GetGroup();
     if (!player->IsGameMaster() && group && group->InCombatToInstance(GetInstanceId()) && player->GetMapId() != GetId())*/
-    if (IsRaid() && GetInstanceScript() && GetInstanceScript()->IsEncounterInProgress())
+    /*if (IsRaid() && GetInstanceScript() && GetInstanceScript()->IsEncounterInProgress())
     {
         player->SendTransferAborted(GetId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
         return false;
-    }
+    }*/
 
     // cannot enter if instance is in use by another party/soloer that have a
     // permanent save in the same instance id

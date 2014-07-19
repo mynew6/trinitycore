@@ -29,7 +29,7 @@
 #include <cstdio>
 #include <sstream>
 
-Log::Log() : _ioService(nullptr), _strand(nullptr)
+Log::Log() : worker(NULL)
 {
     m_logsTimestamp = "_" + GetTimestampStr();
     LoadFromConfig();
@@ -37,7 +37,6 @@ Log::Log() : _ioService(nullptr), _strand(nullptr)
 
 Log::~Log()
 {
-    delete _strand;
     Close();
 }
 
@@ -273,13 +272,8 @@ void Log::write(LogMessage* msg) const
     Logger const* logger = GetLoggerByType(msg->type);
     msg->text.append("\n");
 
-    if (_ioService)
-    {
-        auto logOperation = std::shared_ptr<LogOperation>(new LogOperation(logger, msg));
-
-        _ioService->post(_strand->wrap([logOperation](){ logOperation->call(); }));
-       
-    }
+    if (worker)
+        worker->enqueue(new LogOperation(logger, msg));
     else
     {
         logger->write(*msg);
@@ -289,11 +283,9 @@ void Log::write(LogMessage* msg) const
 
 std::string Log::GetTimestampStr()
 {
-    time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-
-    std::tm aTm;
-    localtime_r(&tt, &aTm);
-
+    time_t t = time(NULL);
+    tm aTm;
+    ACE_OS::localtime_r(&t, &aTm);
     //       YYYY   year
     //       MM     month (2 digits 01-12)
     //       DD     day (2 digits 01-31)
@@ -381,6 +373,8 @@ void Log::SetRealmId(uint32 id)
 
 void Log::Close()
 {
+    delete worker;
+    worker = NULL;
     loggers.clear();
     for (AppenderMap::iterator it = appenders.begin(); it != appenders.end(); ++it)
     {
@@ -393,6 +387,9 @@ void Log::Close()
 void Log::LoadFromConfig()
 {
     Close();
+
+    if (sConfigMgr->GetBoolDefault("Log.Async.Enable", false))
+        worker = new LogWorker();
 
     AppenderId = 0;
     m_logsDir = sConfigMgr->GetStringDefault("LogsDir", "");

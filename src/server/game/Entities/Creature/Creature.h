@@ -59,7 +59,6 @@ enum CreatureFlagsExtra
     CREATURE_FLAG_EXTRA_NO_SKILLGAIN    = 0x00040000,       // creature won't increase weapon skills
     CREATURE_FLAG_EXTRA_TAUNT_DIMINISH  = 0x00080000,       // Taunt is a subject to diminishing returns on this creautre
     CREATURE_FLAG_EXTRA_ALL_DIMINISH    = 0x00100000,       // Creature is subject to all diminishing returns as player are
-    CREATURE_FLAG_EXTRA_NPCBOT          = 0x04000000,       // custom flag for NPCBots (not confirmed safe)
     CREATURE_FLAG_EXTRA_DUNGEON_BOSS    = 0x10000000        // creature is a dungeon boss (SET DYNAMICALLY, DO NOT ADD IN DB)
 };
 
@@ -68,7 +67,6 @@ enum CreatureFlagsExtra
     CREATURE_FLAG_EXTRA_NO_CRUSH | CREATURE_FLAG_EXTRA_NO_XP_AT_KILL | CREATURE_FLAG_EXTRA_TRIGGER | \
     CREATURE_FLAG_EXTRA_NO_TAUNT | CREATURE_FLAG_EXTRA_WORLDEVENT | CREATURE_FLAG_EXTRA_NO_CRIT | \
     CREATURE_FLAG_EXTRA_NO_SKILLGAIN | CREATURE_FLAG_EXTRA_TAUNT_DIMINISH | CREATURE_FLAG_EXTRA_ALL_DIMINISH | \
-    CREATURE_FLAG_EXTRA_NPCBOT | \
     CREATURE_FLAG_EXTRA_GUARD)
 
 #define MAX_KILL_CREDIT 2
@@ -456,12 +454,12 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
         void SetCorpseDelay(uint32 delay) { m_corpseDelay = delay; }
         uint32 GetCorpseDelay() const { return m_corpseDelay; }
         bool IsRacialLeader() const { return GetCreatureTemplate()->RacialLeader; }
-        bool IsCivilian() const { return (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_CIVILIAN) != 0; }
-        bool IsTrigger() const { return (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_TRIGGER) != 0; }
-        bool IsGuard() const { return (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_GUARD) != 0; }
-        bool CanWalk() const { return (GetCreatureTemplate()->InhabitType & INHABIT_GROUND) != 0; }
-        bool CanSwim() const { return (GetCreatureTemplate()->InhabitType & INHABIT_WATER) != 0 || IsPet(); }
-        bool CanFly()  const { return (GetCreatureTemplate()->InhabitType & INHABIT_AIR) != 0; }
+        bool IsCivilian() const { return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_CIVILIAN; }
+        bool IsTrigger() const { return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_TRIGGER; }
+        bool IsGuard() const { return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_GUARD; }
+        bool CanWalk() const { return GetCreatureTemplate()->InhabitType & INHABIT_GROUND; }
+        bool CanSwim() const { return GetCreatureTemplate()->InhabitType & INHABIT_WATER || IsPet(); }
+        bool CanFly()  const { return GetCreatureTemplate()->InhabitType & INHABIT_AIR; }
 
         void SetReactState(ReactStates st) { m_reactState = st; }
         ReactStates GetReactState() { return m_reactState; }
@@ -571,7 +569,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
         void AllLootRemovedFromCorpse();
 
         uint16 GetLootMode() { return m_LootMode; }
-        bool HasLootMode(uint16 lootMode) { return (m_LootMode & lootMode) != 0; }
+        bool HasLootMode(uint16 lootMode) { return m_LootMode & lootMode; }
         void SetLootMode(uint16 lootMode) { m_LootMode = lootMode; }
         void AddLootMode(uint16 lootMode) { m_LootMode |= lootMode; }
         void RemoveLootMode(uint16 lootMode) { m_LootMode &= ~lootMode; }
@@ -687,71 +685,41 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
         void ReleaseFocus(Spell const* focusSpell);
 
         //Bot commands
-        bool LoadBotCreatureFromDB(uint32 guid, Map* map, bool addToMap = true);
-        Player* GetBotOwner() const;
-        void SetBotOwner(Player* newowner);
+        Player* GetBotOwner() const { return m_bot_owner; }
+        void SetBotOwner(Player* newowner) { m_bot_owner = newowner; }
         Creature* GetCreatureOwner() const { return m_creature_owner; }
         void SetCreatureOwner(Creature* newCreOwner) { m_creature_owner = newCreOwner; }
         Creature* GetBotsPet() const { return m_bots_pet; }
         void SetBotsPetDied();
         void SetBotsPet(Creature* newpet) { /*ASSERT (!m_bots_pet);*/ m_bots_pet = newpet; }
-        bool IsNPCBot() const;
-        bool IsFreeBot() const;
         void SetIAmABot(bool bot = true);
         bool GetIAmABot() const;
         bool GetIAmABotsPet() const;
+        void SetBotClass(uint8 myclass) { m_bot_class = myclass; }
         uint8 GetBotClass() const;
         uint8 GetBotRoles() const;
         bot_ai* GetBotAI() const { return bot_AI; }
         bot_minion_ai* GetBotMinionAI() const;
         bot_pet_ai* GetBotPetAI() const;
-        void SetBotAI(bot_ai* ai) { bot_AI = ai; }
+        void InitBotAI(bool asPet = false);
         void SetBotCommandState(CommandStates st, bool force = false);
         CommandStates GetBotCommandState() const;
         void ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const;
         void ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool& crit) const;
         void ApplyBotDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool& crit) const;
-        void ApplyBotDamageMultiplierHeal(Unit const* victim, float& heal, SpellInfo const* spellInfo, DamageEffectType damagetype, uint32 stack) const;
-        void ApplyBotCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType attackType) const;
-        void ApplyCreatureSpellCostMods(SpellInfo const* spellInfo, int32& cost) const;
-        void ApplyCreatureSpellCastTimeMods(SpellInfo const* spellInfo, int32& casttime) const;
+        void ApplyBotDamageMultiplierEffect(SpellInfo const* spellInfo, uint8 effect_index, float &value) const;
         void SetBotShouldUpdateStats();
         void OnBotSummon(Creature* summon);
         void OnBotDespawn(Creature* summon);
         void SetCanUpdate(bool can) { m_canUpdate = can; }
-        void KillEvents(bool force);
-        void BotStopMovement();
-        void ResetBotAI(uint8 resetType = 0);
-
-        bool CanParry() const;
-        bool CanDodge() const;
-        bool CanBlock() const;
-        bool CanCrit() const;
-        bool CanMiss() const;
-
-        float GetCreatureParryChance() const;
-        float GetCreatureDodgeChance() const;
-        float GetCreatureBlockChance() const;
-        float GetCreatureCritChance() const;
-        float GetCreatureMissChance() const;
-        float GetCreatureEvasion() const;
-        float GetCreatureArmorPenetrationCoef() const;
-        float GetCreatureDamageTakenMod() const;
-        uint32 GetCreatureExpertise() const;
-        uint32 GetCreatureSpellPenetration() const;
-        uint32 GetCreatureSpellPower() const;
-
-        bool IsCreatureImmuneToSpell(SpellInfo const* spellInfo) const;
-        bool IsTempBot() const;
-
-        MeleeHitOutcome BotRollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackType attType) const;
-
-        void CastCreatureItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 procVictim, uint32 procEx, Spell const* spell = NULL);
-
-        void OnSpellGo(Spell const* spell);
-        void AddBotSpellCooldown(uint32 spellId, uint32 cooldown);
-
-        static bool IsBotCustomSpell(uint32 spellId);
+        void RemoveBotItemBonuses(uint8 slot);
+        void ApplyBotItemBonuses(uint8 slot);
+        bool CanUseOffHand() const;
+        bool CanUseRanged() const;
+        bool CanEquip(ItemTemplate const* item, uint8 slot) const;
+        bool Unequip(uint8 slot) const;
+        bool Equip(uint32 itemId, uint8 slot) const;
+        bool ResetEquipment(uint8 slot) const;
         //advanced
         bool IsQuestBot() const;
         //End Bot commands
@@ -809,9 +777,11 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
 
     private:
         //bot system
+        Player* m_bot_owner;
         Creature* m_creature_owner;
         Creature* m_bots_pet;
         bot_ai* bot_AI;
+        uint8 m_bot_class;
         bool m_canUpdate;
         //end bot system
 

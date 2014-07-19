@@ -20,42 +20,32 @@
 #include "SQLOperation.h"
 #include "MySQLConnection.h"
 #include "MySQLThreading.h"
-#include "ProducerConsumerQueue.h"
 
-DatabaseWorker::DatabaseWorker(ProducerConsumerQueue<SQLOperation*>* newQueue, MySQLConnection* connection)
+DatabaseWorker::DatabaseWorker(ACE_Activation_Queue* new_queue, MySQLConnection* con) :
+m_queue(new_queue),
+m_conn(con)
 {
-    _connection = connection;
-    _queue = newQueue;
-    _cancelationToken = false;
-    _workerThread = std::thread(&DatabaseWorker::WorkerThread, this);
+    /// Assign thread to task
+    activate();
 }
 
-DatabaseWorker::~DatabaseWorker()
+int DatabaseWorker::svc()
 {
-    _cancelationToken = true;
+    if (!m_queue)
+        return -1;
 
-    _queue->Cancel();
-
-    _workerThread.join();
-}
-
-void DatabaseWorker::WorkerThread()
-{
-    if (!_queue)
-        return;
-
-    for (;;)
+    SQLOperation *request = NULL;
+    while (1)
     {
-        SQLOperation* operation = nullptr;
+        request = (SQLOperation*)(m_queue->dequeue());
+        if (!request)
+            break;
 
-        _queue->WaitAndPop(operation);
+        request->SetConnection(m_conn);
+        request->call();
 
-        if (_cancelationToken)
-            return;
-
-        operation->SetConnection(_connection);
-        operation->call();
-
-        delete operation;
+        delete request;
     }
+
+    return 0;
 }

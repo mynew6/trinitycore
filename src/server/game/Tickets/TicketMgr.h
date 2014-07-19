@@ -19,6 +19,7 @@
 #define _TICKETMGR_H
 
 #include <string>
+#include <ace/Singleton.h>
 
 #include "ObjectMgr.h"
 
@@ -84,7 +85,7 @@ public:
     GmTicket(Player* player);
     ~GmTicket();
 
-    bool IsClosed() const { return _closedBy != 0; }
+    bool IsClosed() const { return _closedBy; }
     bool IsCompleted() const { return _completed; }
     bool IsFromPlayer(uint64 guid) const { return guid == _playerGuid; }
     bool IsAssigned() const { return _assignedTo != 0; }
@@ -173,17 +174,13 @@ typedef std::map<uint32, GmTicket*> GmTicketList;
 
 class TicketMgr
 {
+    friend class ACE_Singleton<TicketMgr, ACE_Null_Mutex>;
+
 private:
     TicketMgr();
     ~TicketMgr();
 
 public:
-    static TicketMgr* instance()
-    {
-        static TicketMgr* instance = new TicketMgr();
-        return instance;
-    }
-
     void LoadTickets();
     void LoadSurveys();
 
@@ -249,6 +246,6 @@ protected:
     uint64 _lastChange;
 };
 
-#define sTicketMgr TicketMgr::instance()
+#define sTicketMgr ACE_Singleton<TicketMgr, ACE_Null_Mutex>::instance()
 
 #endif // _TICKETMGR_H

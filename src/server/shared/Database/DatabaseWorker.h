@@ -18,26 +18,24 @@
 #ifndef _WORKERTHREAD_H
 #define _WORKERTHREAD_H
 
-#include <thread>
-#include "ProducerConsumerQueue.h"
+#include "Define.h"
+#include <ace/Task.h>
+#include <ace/Activation_Queue.h>
 
 class MySQLConnection;
-class SQLOperation;
 
-class DatabaseWorker
+class DatabaseWorker : protected ACE_Task_Base
 {
     public:
-        DatabaseWorker(ProducerConsumerQueue<SQLOperation*>* newQueue, MySQLConnection* connection);
-        ~DatabaseWorker();
+        DatabaseWorker(ACE_Activation_Queue* new_queue, MySQLConnection* con);
+
+        ///- Inherited from ACE_Task_Base
+        int svc();
+        int wait() { return ACE_Task_Base::wait(); }
 
     private:
-        ProducerConsumerQueue<SQLOperation*>* _queue;
-        MySQLConnection* _connection;
-
-        void WorkerThread();
-        std::thread _workerThread;
-
-        std::atomic_bool _cancelationToken;
+        ACE_Activation_Queue* m_queue;
+        MySQLConnection* m_conn;
 
         DatabaseWorker(DatabaseWorker const& right) = delete;
         DatabaseWorker& operator=(DatabaseWorker const& right) = delete;

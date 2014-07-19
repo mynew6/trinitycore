@@ -21,54 +21,42 @@
 #include "utf8.h"
 #include "SFMT.h"
 #include "Errors.h" // for ASSERT
-#include <boost/thread/tss.hpp>
+#include <ace/TSS_T.h>
 
-static boost::thread_specific_ptr<SFMTRand> sfmtRand;
-
-static SFMTRand* GetRng()
-{
-    SFMTRand* rand = sfmtRand.get();
-
-    if (!rand)
-    {
-        rand = new SFMTRand();
-        sfmtRand.reset(rand);
-    }
-
-    return rand;
-}
+typedef ACE_TSS<SFMTRand> SFMTRandTSS;
+static SFMTRandTSS sfmtRand;
 
 int32 irand(int32 min, int32 max)
 {
     ASSERT(max >= min);
-    return int32(GetRng()->IRandom(min, max));
+    return int32(sfmtRand->IRandom(min, max));
 }
 
 uint32 urand(uint32 min, uint32 max)
 {
     ASSERT(max >= min);
-    return GetRng()->URandom(min, max);
+    return sfmtRand->URandom(min, max);
 }
 
 float frand(float min, float max)
 {
     ASSERT(max >= min);
-    return float(GetRng()->Random() * (max - min) + min);
+    return float(sfmtRand->Random() * (max - min) + min);
 }
 
 int32 rand32()
 {
-    return int32(GetRng()->BRandom());
+    return int32(sfmtRand->BRandom());
 }
 
 double rand_norm(void)
 {
-    return GetRng()->Random();
+    return sfmtRand->Random();
 }
 
 double rand_chance(void)
 {
-    return GetRng()->Random() * 100.0;
+    return sfmtRand->Random() * 100.0;
 }
 
 Tokenizer::Tokenizer(const std::string &src, const char sep, uint32 vectorReserve)
@@ -138,14 +126,6 @@ void stripLineInvisibleChars(std::string &str)
         str.clear();
 
 }
-
-#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-struct tm* localtime_r(const time_t* time, struct tm *result)
-{
-    localtime_s(result, time);
-    return result;
-}
-#endif
 
 std::string secsToTimeString(uint64 timeInSecs, bool shortText, bool hoursOnly)
 {
@@ -236,7 +216,7 @@ uint32 TimeStringToSecs(const std::string& timestring)
 std::string TimeToTimestampStr(time_t t)
 {
     tm aTm;
-    localtime_r(&t, &aTm);
+    ACE_OS::localtime_r(&t, &aTm);
     //       YYYY   year
     //       MM     month (2 digits 01-12)
     //       DD     day (2 digits 01-31)
@@ -257,6 +237,21 @@ bool IsIPAddress(char const* ipaddress)
     // Let the big boys do it.
     // Drawback: all valid ip address formats are recognized e.g.: 12.23, 121234, 0xABCD)
     return inet_addr(ipaddress) != INADDR_NONE;
+}
+
+std::string GetAddressString(ACE_INET_Addr const& addr)
+{
+    char buf[ACE_MAX_FULLY_QUALIFIED_NAME_LEN + 16];
+    addr.addr_to_string(buf, ACE_MAX_FULLY_QUALIFIED_NAME_LEN + 16);
+    return buf;
+}
+
+bool IsIPAddrInNetwork(ACE_INET_Addr const& net, ACE_INET_Addr const& addr, ACE_INET_Addr const& subnetMask)
+{
+    uint32 mask = subnetMask.get_ip_address();
+    if ((net.get_ip_address() & mask) == (addr.get_ip_address() & mask))
+        return true;
+    return false;
 }
 
 /// create PID file

@@ -37,10 +37,6 @@
 #include "VMapFactory.h"
 #include "LuaEngine.h"
 
-//npcbot
-#include "botmgr.h"
-//end npcbot
-
 u_map_magic MapMagic        = { {'M','A','P','S'} };
 u_map_magic MapVersionMagic = { {'v','1','.','3'} };
 u_map_magic MapAreaMagic    = { {'A','R','E','A'} };
@@ -396,7 +392,7 @@ void Map::DeleteFromWorld(Player* player)
 
 void Map::EnsureGridCreated(const GridCoord &p)
 {
-    std::lock_guard<std::mutex> lock(_gridLock);
+    TRINITY_GUARD(ACE_Thread_Mutex, GridLock);
     EnsureGridCreated_i(p);
 }
 
@@ -2204,13 +2200,13 @@ inline bool IsOutdoorWMO(uint32 mogpFlags, int32 /*adtId*/, int32 /*rootId*/, in
             return false;
     }
 
-    outdoor = (mogpFlags & 0x8) != 0;
+    outdoor = mogpFlags&0x8;
 
     if (wmoEntry)
     {
         if (wmoEntry->Flags & 4)
             return true;
-        if (wmoEntry->Flags & 2)
+        if ((wmoEntry->Flags & 2)!=0)
             outdoor = false;
     }
     return outdoor;
@@ -2451,12 +2447,12 @@ bool Map::IsInWater(float x, float y, float pZ, LiquidData* data) const
 {
     LiquidData liquid_status;
     LiquidData* liquid_ptr = data ? data : &liquid_status;
-    return (getLiquidStatus(x, y, pZ, MAP_ALL_LIQUIDS, liquid_ptr) & (LIQUID_MAP_IN_WATER | LIQUID_MAP_UNDER_WATER)) != 0;
+    return getLiquidStatus(x, y, pZ, MAP_ALL_LIQUIDS, liquid_ptr) & (LIQUID_MAP_IN_WATER | LIQUID_MAP_UNDER_WATER);
 }
 
 bool Map::IsUnderWater(float x, float y, float z) const
 {
-    return (getLiquidStatus(x, y, z, MAP_LIQUID_TYPE_WATER | MAP_LIQUID_TYPE_OCEAN) & LIQUID_MAP_UNDER_WATER) != 0;
+    return getLiquidStatus(x, y, z, MAP_LIQUID_TYPE_WATER|MAP_LIQUID_TYPE_OCEAN) & LIQUID_MAP_UNDER_WATER;
 }
 
 bool Map::CheckGridIntegrity(Creature* c, bool moved) const
@@ -2520,7 +2516,7 @@ void Map::SendInitSelf(Player* player)
 
     // build other passengers at transport also (they always visible and marked as visible and will not send at visibility update at add to map
     if (Transport* transport = player->GetTransport())
-        for (Transport::PassengerSet::const_iterator itr = transport->GetPassengers().begin(); itr != transport->GetPassengers().end(); ++itr)
+            for (Transport::PassengerSet::const_iterator itr = transport->GetPassengers().begin(); itr != transport->GetPassengers().end(); ++itr)
             if (player != (*itr) && player->HaveAtClient(*itr))
                 (*itr)->BuildCreateUpdateBlockForPlayer(&data, player);
 
@@ -2687,22 +2683,10 @@ uint32 Map::GetPlayersCountExceptGMs() const
     uint32 count = 0;
     for (MapRefManager::const_iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
         if (!itr->GetSource()->IsGameMaster())
-            //npcbot - count npcbots as group members (event if not in group)
-            if (itr->GetSource()->HaveBot() && BotMgr::LimitBots(this))
-            {
-                ++count;
-                BotMap const* botmap = itr->GetSource()->GetBotMgr()->GetBotMap();
-                for (BotMap::const_iterator itr = botmap->begin(); itr != botmap->end(); ++itr)
-                {
-                    Creature* cre = itr->second;
-                    if (!cre || !cre->IsInWorld() || cre->FindMap() != this)
-                        continue;
-                    ++count;
-                }
-            }
-            else
-            //end npcbot
+        {
             ++count;
+            count += itr->GetSource()->GetNpcBotsCount();
+        }
     return count;
 }
 
@@ -2768,10 +2752,6 @@ void Map::AddToActive(Creature* c)
         GridCoord p = Trinity::ComputeGridCoord(x, y);
         if (getNGrid(p.x_coord, p.y_coord))
             getNGrid(p.x_coord, p.y_coord)->incUnloadActiveLock();
-        //bot
-        else if (c->GetIAmABot())
-            EnsureGridLoadedForActiveObject(Cell(Trinity::ComputeCellCoord(c->GetPositionX(), c->GetPositionY())), c);
-        //end bot
         else
         {
             GridCoord p2 = Trinity::ComputeGridCoord(c->GetPositionX(), c->GetPositionY());
@@ -2803,10 +2783,6 @@ void Map::RemoveFromActive(Creature* c)
         GridCoord p = Trinity::ComputeGridCoord(x, y);
         if (getNGrid(p.x_coord, p.y_coord))
             getNGrid(p.x_coord, p.y_coord)->decUnloadActiveLock();
-        //bot
-        else if (c->GetIAmABot())
-            EnsureGridLoaded(Cell(Trinity::ComputeCellCoord(c->GetPositionX(), c->GetPositionY())));
-        //end bot
         else
         {
             GridCoord p2 = Trinity::ComputeGridCoord(c->GetPositionX(), c->GetPositionY());
@@ -2932,7 +2908,7 @@ bool InstanceMap::AddPlayerToMap(Player* player)
     // Is it needed?
 
     {
-        std::lock_guard<std::mutex> lock(_mapLock);
+        TRINITY_GUARD(ACE_Thread_Mutex, Lock);
         // Check moved to void WorldSession::HandleMoveWorldportAckOpcode()
         //if (!CanEnter(player))
             //return false;
@@ -3273,7 +3249,7 @@ bool BattlegroundMap::CanEnter(Player* player)
 bool BattlegroundMap::AddPlayerToMap(Player* player)
 {
     {
-        std::lock_guard<std::mutex> lock(_mapLock);
+        TRINITY_GUARD(ACE_Thread_Mutex, Lock);
         //Check moved to void WorldSession::HandleMoveWorldportAckOpcode()
         //if (!CanEnter(player))
             //return false;

@@ -166,7 +166,7 @@ class spell_item_blessing_of_ancient_kings : public SpellScriptLoader
 
             bool CheckProc(ProcEventInfo& eventInfo)
             {
-                return eventInfo.GetProcTarget() != nullptr;
+                return eventInfo.GetProcTarget();
             }
 
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)

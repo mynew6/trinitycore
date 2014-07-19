@@ -18,6 +18,8 @@
 #ifndef _DATABASEWORKERPOOL_H
 #define _DATABASEWORKERPOOL_H
 
+#include <ace/Thread_Mutex.h>
+
 #include "Common.h"
 #include "Callback.h"
 #include "MySQLConnection.h"
@@ -49,7 +51,8 @@ class DatabaseWorkerPool
         /* Activity state */
         DatabaseWorkerPool() : _connectionInfo(NULL)
         {
-            _queue = new ProducerConsumerQueue<SQLOperation*>();
+            _messageQueue = new ACE_Message_Queue<ACE_SYNCH>(8 * 1024 * 1024, 8 * 1024 * 1024);
+            _queue = new ACE_Activation_Queue(_messageQueue);
             memset(_connectionCount, 0, sizeof(_connectionCount));
             _connections.resize(IDX_SIZE);
 
@@ -104,10 +107,16 @@ class DatabaseWorkerPool
         {
             TC_LOG_INFO("sql.driver", "Closing down DatabasePool '%s'.", GetDatabaseName());
 
+            //! Shuts down delaythreads for this connection pool by underlying deactivate().
+            //! The next dequeue attempt in the worker thread tasks will result in an error,
+            //! ultimately ending the worker thread task.
+            _queue->queue()->close();
+
             for (uint8 i = 0; i < _connectionCount[IDX_ASYNC]; ++i)
             {
                 T* t = _connections[IDX_ASYNC][i];
                 DatabaseWorker* worker = t->m_worker;
+                worker->wait();     //! Block until no more threads are running this task.
                 delete worker;
                 t->Close();         //! Closes the actualy MySQL connection.
             }
@@ -122,7 +131,9 @@ class DatabaseWorkerPool
             for (uint8 i = 0; i < _connectionCount[IDX_SYNCH]; ++i)
                 _connections[IDX_SYNCH][i]->Close();
 
+            //! Deletes the ACE_Activation_Queue object and its underlying ACE_Message_Queue
             delete _queue;
+            delete _messageQueue;
 
             TC_LOG_INFO("sql.driver", "All connections on DatabasePool '%s' closed.", GetDatabaseName());
 
@@ -296,9 +307,10 @@ class DatabaseWorkerPool
         //! The return value is then processed in ProcessQueryCallback methods.
         QueryResultFuture AsyncQuery(const char* sql)
         {
-            BasicStatementTask* task = new BasicStatementTask(sql, true);
+            QueryResultFuture res;
+            BasicStatementTask* task = new BasicStatementTask(sql, res);
             Enqueue(task);
-            return task->GetFuture();         //! Actual return value has no use yet
+            return res;         //! Actual return value has no use yet
         }
 
         //! Enqueues a query in string format -with variable args- that will set the value of the QueryResultFuture return object as soon as the query is executed.
@@ -319,9 +331,10 @@ class DatabaseWorkerPool
         //! Statement must be prepared with CONNECTION_ASYNC flag.
         PreparedQueryResultFuture AsyncQuery(PreparedStatement* stmt)
         {
-            PreparedStatementTask* task = new PreparedStatementTask(stmt, true);
+            PreparedQueryResultFuture res;
+            PreparedStatementTask* task = new PreparedStatementTask(stmt, res);
             Enqueue(task);
-            return task->GetFuture();
+            return res;
         }
 
         //! Enqueues a vector of SQL operations (can be both adhoc and prepared) that will set the value of the QueryResultHolderFuture
@@ -330,9 +343,10 @@ class DatabaseWorkerPool
         //! Any prepared statements added to this holder need to be prepared with the CONNECTION_ASYNC flag.
         QueryResultHolderFuture DelayQueryHolder(SQLQueryHolder* holder)
         {
-            SQLQueryHolderTask* task = new SQLQueryHolderTask(holder);
+            QueryResultHolderFuture res;
+            SQLQueryHolderTask* task = new SQLQueryHolderTask(holder, res);
             Enqueue(task);
-            return task->GetFuture();
+            return res;     //! Fool compiler, has no use yet
         }
 
         /**
@@ -402,7 +416,7 @@ class DatabaseWorkerPool
         //! Will be wrapped in a transaction if valid object is present, otherwise executed standalone.
         void ExecuteOrAppend(SQLTransaction& trans, PreparedStatement* stmt)
         {
-            if (!trans)
+            if (trans.null())
                 Execute(stmt);
             else
                 trans->Append(stmt);
@@ -412,7 +426,7 @@ class DatabaseWorkerPool
         //! Will be wrapped in a transaction if valid object is present, otherwise executed standalone.
         void ExecuteOrAppend(SQLTransaction& trans, const char* sql)
         {
-            if (!trans)
+            if (trans.null())
                 Execute(sql);
             else
                 trans->Append(sql);
@@ -474,7 +488,7 @@ class DatabaseWorkerPool
 
         void Enqueue(SQLOperation* op)
         {
-            _queue->Push(op);
+            _queue->enqueue(op);
         }
 
         //! Gets a free connection in the synchronous connection pool.
@@ -509,10 +523,11 @@ class DatabaseWorkerPool
             IDX_SIZE
         };
 
-        ProducerConsumerQueue<SQLOperation*>* _queue;             //! Queue shared by async worker threads.
-        std::vector< std::vector<T*> >        _connections;
-        uint32                                _connectionCount[2];       //! Counter of MySQL connections;
-        MySQLConnectionInfo*                  _connectionInfo;
+        ACE_Message_Queue<ACE_SYNCH>*   _messageQueue;      //! Message Queue used by ACE_Activation_Queue
+        ACE_Activation_Queue*           _queue;             //! Queue shared by async worker threads.
+        std::vector< std::vector<T*> >  _connections;
+        uint32                          _connectionCount[2];       //! Counter of MySQL connections;
+        MySQLConnectionInfo*            _connectionInfo;
 };
 
 #endif

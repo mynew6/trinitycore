@@ -33,6 +33,11 @@
 #include <string>
 #include <vector>
 
+// NpcBot mod
+struct NpcBotMap;
+#define MAX_NPCBOTS 39
+class BotHelper;
+
 struct CreatureTemplate;
 struct Mail;
 struct TrainerSpell;
@@ -52,10 +57,6 @@ class PlayerMenu;
 class PlayerSocial;
 class SpellCastTargets;
 class UpdateMask;
-
-// NpcBot mod
-class BotMgr;
-// end NpcBot mod
 
 typedef std::deque<Mail*> PlayerMails;
 
@@ -1117,7 +1118,6 @@ class Player : public Unit, public GridObject<Player>
 
         void SendInitialPacketsBeforeAddToMap();
         void SendInitialPacketsAfterAddToMap();
-        void SendSupercededSpell(uint32 oldSpell, uint32 newSpell);
         void SendTransferAborted(uint32 mapid, TransferAbortReason reason, uint8 arg = 0);
         void SendInstanceResetWarning(uint32 mapid, Difficulty difficulty, uint32 time);
 
@@ -1143,13 +1143,13 @@ class Player : public Unit, public GridObject<Player>
         void CleanupAfterTaxiFlight();
         void ContinueTaxiFlight();
                                                             // mount_id can be used in scripting calls
-        bool isAcceptWhispers() const { return (m_ExtraFlags & PLAYER_EXTRA_ACCEPT_WHISPERS) != 0; }
+        bool isAcceptWhispers() const { return m_ExtraFlags & PLAYER_EXTRA_ACCEPT_WHISPERS; }
         void SetAcceptWhispers(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_ACCEPT_WHISPERS; else m_ExtraFlags &= ~PLAYER_EXTRA_ACCEPT_WHISPERS; }
-        bool IsGameMaster() const { return (m_ExtraFlags & PLAYER_EXTRA_GM_ON) != 0; }
+        bool IsGameMaster() const { return m_ExtraFlags & PLAYER_EXTRA_GM_ON; }
         void SetGameMaster(bool on);
-        bool isGMChat() const { return (m_ExtraFlags & PLAYER_EXTRA_GM_CHAT) != 0; }
+        bool isGMChat() const { return m_ExtraFlags & PLAYER_EXTRA_GM_CHAT; }
         void SetGMChat(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_GM_CHAT; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_CHAT; }
-        bool isTaxiCheater() const { return (m_ExtraFlags & PLAYER_EXTRA_TAXICHEAT) != 0; }
+        bool isTaxiCheater() const { return m_ExtraFlags & PLAYER_EXTRA_TAXICHEAT; }
         void SetTaxiCheater(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_TAXICHEAT; else m_ExtraFlags &= ~PLAYER_EXTRA_TAXICHEAT; }
         bool isGMVisible() const { return !(m_ExtraFlags & PLAYER_EXTRA_GM_INVISIBLE); }
         void SetGMVisible(bool on);
@@ -1163,7 +1163,7 @@ class Player : public Unit, public GridObject<Player>
         void InitStatsForLevel(bool reapplyMods = false);
 
         // .cheat command related
-        bool GetCommandStatus(uint32 command) const { return (_activeCheats & command) != 0; }
+        bool GetCommandStatus(uint32 command) const { return _activeCheats & command; }
         void SetCommandStatusOn(uint32 command) { _activeCheats |= command; }
         void SetCommandStatusOff(uint32 command) { _activeCheats &= ~command; }
 
@@ -1943,8 +1943,8 @@ class Player : public Unit, public GridObject<Player>
         bool RewardHonor(Unit* victim, uint32 groupsize, int32 honor = -1, bool pvptoken = false);
         uint32 GetHonorPoints() const { return GetUInt32Value(PLAYER_FIELD_HONOR_CURRENCY); }
         uint32 GetArenaPoints() const { return GetUInt32Value(PLAYER_FIELD_ARENA_CURRENCY); }
-        void ModifyHonorPoints(int32 value, SQLTransaction trans = SQLTransaction(nullptr));      //! If trans is specified, honor save query will be added to trans
-        void ModifyArenaPoints(int32 value, SQLTransaction trans = SQLTransaction(nullptr));      //! If trans is specified, arena point save query will be added to trans
+        void ModifyHonorPoints(int32 value, SQLTransaction* trans = NULL);      //! If trans is specified, honor save query will be added to trans
+        void ModifyArenaPoints(int32 value, SQLTransaction* trans = NULL);      //! If trans is specified, arena point save query will be added to trans
         uint32 GetMaxPersonalArenaRatingRequirement(uint32 minarenaslot) const;
         void SetHonorPoints(uint32 value);
         void SetArenaPoints(uint32 value);
@@ -2166,7 +2166,7 @@ class Player : public Unit, public GridObject<Player>
 
         uint8 m_forced_speed_changes[MAX_MOVE_TYPE];
 
-        bool HasAtLoginFlag(AtLoginFlags f) const { return (m_atLoginFlags & f) != 0; }
+        bool HasAtLoginFlag(AtLoginFlags f) const { return m_atLoginFlags & f; }
         void SetAtLoginFlag(AtLoginFlags f) { m_atLoginFlags |= f; }
         void RemoveAtLoginFlag(AtLoginFlags flags, bool persist = false);
 
@@ -2324,14 +2324,32 @@ class Player : public Unit, public GridObject<Player>
         /*********************************************************/
         /***                     BOT SYSTEM                    ***/
         /*********************************************************/
-        void SetBotMgr(BotMgr* mgr) { ASSERT (!_botMgr); _botMgr = mgr; }
-        BotMgr* GetBotMgr() const { return _botMgr; }
+        void SetBotHelper(BotHelper* hlpr) { ASSERT (!_botHlpr); _botHlpr = hlpr; }
+        BotHelper* GetBotHelper() const { return _botHlpr; }
+        void RefreshBot(uint32 p_time);
+        void CreateBot(uint32 botentry, uint8 botrace, uint8 botclass, bool revive = false);
+        void CreateNPCBot(uint8 botclass);
+        int8 GetNpcBotSlot(uint64 guid) const;
+        void SendBotCommandState(Creature* cre, CommandStates state);
         bool HaveBot() const;
-        uint8 GetNpcBotsCount(bool inWorldOnly = false) const;
-        uint8 GetBotFollowDist() const;
-        void SetBotFollowDist(int8 dist);
-        void SetBotsShouldUpdateStats();
-        void RemoveAllBots(uint8 removetype = 0);
+        void RemoveBot(uint64 guid, bool final = false, bool eraseFromDB = true);
+        void SetBot(Creature* cre) { m_bot = cre; }
+        uint8 GetNpcBotsCount() const;
+        void SetBotMustBeCreated(uint32 m_entry, uint8 m_race, uint8 m_class, uint32 *equips);
+        void ClearBotMustBeCreated(uint64 value, bool guid = true, bool fully = false);
+        bool GetBotMustBeCreated();
+        uint8 GetBotFollowDist() const { return m_followdist; }
+        void SetBotFollowDist(int8 dist) { m_followdist = dist; }
+        void SetNpcBotDied(uint64 guid);
+        NpcBotMap const* GetBotMap(uint8 pos) const { return m_botmap[pos]; }
+        uint8 GetMaxNpcBots() const;
+        uint8 GetNpcBotXpReduction() const { return m_xpReductionNpcBots; }
+        bool RestrictBots() const;
+        uint32 GetNpcBotCost() const;
+        std::string GetNpcBotCostStr() const;
+        void InitBotEquips(Creature* bot);
+        void UpdateBotEquips(Creature* bot, uint8 slot, uint32 itemId);
+        uint32 GetBotEquip(Creature* bot, uint8 slot) const;
         /*********************************************************/
         /***                 END BOT SYSTEM                    ***/
         /*********************************************************/
@@ -2602,7 +2620,23 @@ class Player : public Unit, public GridObject<Player>
         /*********************************************************/
         /***                     BOT SYSTEM                    ***/
         /*********************************************************/
-        BotMgr* _botMgr;
+        BotHelper* _botHlpr;
+        Creature* m_bot;
+        int8 m_followdist;
+        uint8 m_maxNpcBots;
+        uint8 m_maxClassNpcBots;
+        uint8 m_xpReductionNpcBots;
+        bool m_enableNpcBots;
+        bool m_enableNpcBotsArenas;
+        bool m_enableNpcBotsBGs;
+        bool m_enableNpcBotsDungeons;
+        bool m_enableNpcBotsRaids;
+        bool m_limitNpcBotsDungeons;
+        bool m_limitNpcBotsRaids;
+        uint32 m_NpcBotsCost;
+        uint32 m_botTimer;
+        uint32 m_botCreateTimer;
+        NpcBotMap* m_botmap[MAX_NPCBOTS];
         /*********************************************************/
         /***                END BOT SYSTEM                     ***/
         /*********************************************************/

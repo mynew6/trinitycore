@@ -1007,7 +1007,7 @@ bool SpellInfo::IsTargetingArea() const
 
 bool SpellInfo::NeedsExplicitUnitTarget() const
 {
-    return (GetExplicitTargetMask() & TARGET_FLAG_UNIT_MASK) != 0;
+    return GetExplicitTargetMask() & TARGET_FLAG_UNIT_MASK;
 }
 
 bool SpellInfo::NeedsToBeTriggeredByCaster(SpellInfo const* triggeringSpell) const
@@ -1048,7 +1048,7 @@ bool SpellInfo::NeedsToBeTriggeredByCaster(SpellInfo const* triggeringSpell) con
 
 bool SpellInfo::IsPassive() const
 {
-    return (Attributes & SPELL_ATTR0_PASSIVE) != 0;
+    return Attributes & SPELL_ATTR0_PASSIVE;
 }
 
 bool SpellInfo::IsAutocastable() const
@@ -1116,12 +1116,12 @@ bool SpellInfo::IsCooldownStartedOnEvent() const
 
 bool SpellInfo::IsDeathPersistent() const
 {
-    return (AttributesEx3 & SPELL_ATTR3_DEATH_PERSISTENT) != 0;
+    return AttributesEx3 & SPELL_ATTR3_DEATH_PERSISTENT;
 }
 
 bool SpellInfo::IsRequiringDeadTarget() const
 {
-    return (AttributesEx3 & SPELL_ATTR3_ONLY_TARGET_GHOSTS) != 0;
+    return AttributesEx3 & SPELL_ATTR3_ONLY_TARGET_GHOSTS;
 }
 
 bool SpellInfo::IsAllowingDeadTarget() const
@@ -1155,12 +1155,12 @@ bool SpellInfo::IsPositiveEffect(uint8 effIndex) const
 
 bool SpellInfo::IsChanneled() const
 {
-    return (AttributesEx & (SPELL_ATTR1_CHANNELED_1 | SPELL_ATTR1_CHANNELED_2)) != 0;
+    return (AttributesEx & (SPELL_ATTR1_CHANNELED_1 | SPELL_ATTR1_CHANNELED_2));
 }
 
 bool SpellInfo::NeedsComboPoints() const
 {
-    return (AttributesEx & (SPELL_ATTR1_REQ_COMBO_POINTS1 | SPELL_ATTR1_REQ_COMBO_POINTS2)) != 0;
+    return (AttributesEx & (SPELL_ATTR1_REQ_COMBO_POINTS1 | SPELL_ATTR1_REQ_COMBO_POINTS2));
 }
 
 bool SpellInfo::IsBreakingStealth() const
@@ -1176,7 +1176,7 @@ bool SpellInfo::IsRangedWeaponSpell() const
 
 bool SpellInfo::IsAutoRepeatRangedSpell() const
 {
-    return (AttributesEx2 & SPELL_ATTR2_AUTOREPEAT_FLAG) != 0;
+    return AttributesEx2 & SPELL_ATTR2_AUTOREPEAT_FLAG;
 }
 
 bool SpellInfo::IsAffectedBySpellMods() const
@@ -2218,11 +2218,6 @@ int32 SpellInfo::CalcPowerCost(Unit const* caster, SpellSchoolMask schoolMask) c
                 powerCost *= casterScaler->ratio / spellScaler->ratio;
         }
     }
-
-    //npcbot - apply bot spell cost mods
-    if (powerCost > 0 && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->GetBotAI())
-        caster->ToCreature()->ApplyCreatureSpellCostMods(this, powerCost);
-    //end npcbot
 
     // PCT mod from user auras by school
     powerCost = int32(powerCost * (1.0f + caster->GetFloatValue(UNIT_FIELD_POWER_COST_MULTIPLIER + school)));

@@ -1316,7 +1316,7 @@ class npc_the_lich_king_escape_hor : public CreatureScript
                 {
                     if (Unit* victim = me->SelectVictim())
                         AttackStart(victim);
-                    return me->GetVictim() != nullptr;
+                    return me->GetVictim();
                 }
                 else if (me->getThreatManager().getThreatList().size() < 2 && me->HasAura(SPELL_REMORSELESS_WINTER))
                 {

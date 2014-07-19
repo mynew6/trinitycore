@@ -157,7 +157,7 @@ class boss_keleseth : public CreatureScript
             void SetData(uint32 data, uint32 value) override
             {
                 if (data == DATA_ON_THE_ROCKS)
-                    onTheRocks = value != 0;
+                    onTheRocks = value;
             }
 
             uint32 GetData(uint32 data) const override

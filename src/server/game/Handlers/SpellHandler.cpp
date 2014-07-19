@@ -570,7 +570,7 @@ void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
         return;
 
     //bot
-    if (unit->GetTypeId() == TYPEID_UNIT)
+    if (unit->ToCreature())
     {
         CreatureOutfitContainer const& outfits = sObjectMgr->GetCreatureOutfitMap();
         CreatureOutfitContainer::const_iterator it = outfits.find(unit->GetEntry());
@@ -597,10 +597,10 @@ void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
             return;
         }
     }
+    //end bot
 
     if (!unit->HasAuraType(SPELL_AURA_CLONE_CASTER))
         return;
-    //end bot
 
     // Get creator of the unit (SPELL_AURA_CLONE_CASTER does not stack)
     Unit* creator = unit->GetAuraEffectsByType(SPELL_AURA_CLONE_CASTER).front()->GetCaster();

@@ -192,7 +192,7 @@ struct dummy_dragonAI : public ScriptedAI
     void SetData(uint32 type, uint32 value) override
     {
         if (type == DATA_CAN_LOOT)
-            _canLoot = value != 0;
+            _canLoot = value;
     }
 
     void MovementInform(uint32 type, uint32 pointId) override

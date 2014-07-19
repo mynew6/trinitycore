@@ -683,6 +683,19 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_MAILBOX                                = 777,
 
     // custom permissions 1000+
+    
+    //NpcBot command permissions
+    RBAC_PERM_COMMAND_NPCBOT                                 = 1000,
+    RBAC_PERM_COMMAND_NPCBOT_ADD                             = 1001,
+    RBAC_PERM_COMMAND_NPCBOT_REMOVE                          = 1002,
+    RBAC_PERM_COMMAND_NPCBOT_RESET                           = 1003,
+    RBAC_PERM_COMMAND_NPCBOT_CMD                             = 1004,
+    RBAC_PERM_COMMAND_NPCBOT_DIST                            = 1005,
+    RBAC_PERM_COMMAND_NPCBOT_INFO                            = 1006,
+    RBAC_PERM_COMMAND_NPCBOT_HELPER                          = 1007,
+    RBAC_PERM_COMMAND_NPCBOT_REVIVE                          = 1008,
+    //end NpcBot
+
     RBAC_PERM_MAX
 };
 

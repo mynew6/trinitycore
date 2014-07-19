@@ -198,6 +198,31 @@ class CharacterCreateInfo
         uint8 CharCount;
 };
 
+//npcbot
+struct NpcBotMap
+{
+    friend class Player;
+    protected:
+        NpcBotMap() : m_guid(0), m_entry(0), m_race(0), m_class(0), m_creature(NULL), m_reviveTimer(0)
+        {
+            for (uint8 i = 0; i != 18; ++i)
+                equips[i] = 0;
+        }
+        uint64 m_guid;
+        uint32 m_entry;
+        uint8  m_race;
+        uint8  m_class;
+        Creature* m_creature;
+        uint32 m_reviveTimer;
+        uint32 equips[18];
+
+    public:
+        uint64 _Guid() const { return m_guid; }
+        Creature* _Cre() const { return m_creature; }
+        uint32 const getEquips(uint8 slot) const { return equips[slot]; }
+};
+//end bot mods
+
 struct PacketCounter
 {
     time_t lastReceiveTime;
@@ -208,7 +233,7 @@ struct PacketCounter
 class WorldSession
 {
     public:
-        WorldSession(uint32 id, std::shared_ptr<WorldSocket> sock, AccountTypes sec, uint8 expansion, time_t mute_time, LocaleConstant locale, uint32 recruiter, bool isARecruiter);
+        WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, uint8 expansion, time_t mute_time, LocaleConstant locale, uint32 recruiter, bool isARecruiter);
         ~WorldSession();
 
         bool PlayerLoading() const { return m_playerLoading; }
@@ -372,11 +397,10 @@ class WorldSession
         void SetLatency(uint32 latency) { m_latency = latency; }
         void ResetClientTimeDelay() { m_clientTimeDelay = 0; }
 
-        std::atomic<time_t> m_timeOutTime;
-
+        ACE_Atomic_Op<ACE_Thread_Mutex, time_t> m_timeOutTime;
         void UpdateTimeOutTime(uint32 diff)
         {
-            if (time_t(diff) > m_timeOutTime)
+            if (time_t(diff) > m_timeOutTime.value())
                 m_timeOutTime = 0;
             else
                 m_timeOutTime -= diff;
@@ -981,7 +1005,7 @@ class WorldSession
 
         uint32 m_GUIDLow;                                   // set logined or recently logout player (while m_playerRecentlyLogout set)
         Player* _player;
-        std::shared_ptr<WorldSocket> m_Socket;
+        WorldSocket* m_Socket;
         std::string m_Address;                              // Current Remote Address
      // std::string m_LAddress;                             // Last Attempted Remote Adress - we can not set attempted ip for a non-existing session!
 
@@ -1002,15 +1026,15 @@ class WorldSession
         bool m_playerSave;
         LocaleConstant m_sessionDbcLocale;
         LocaleConstant m_sessionDbLocaleIndex;
-        std::atomic<uint32> m_latency;
-        std::atomic<uint32> m_clientTimeDelay;
+        uint32 m_latency;
+        uint32 m_clientTimeDelay;
         AccountData m_accountData[NUM_ACCOUNT_DATA_TYPES];
         uint32 m_Tutorials[MAX_ACCOUNT_TUTORIAL_VALUES];
         bool   m_TutorialsChanged;
         AddonsList m_addonsList;
         uint32 recruiterId;
         bool isRecruiter;
-        LockedQueue<WorldPacket*> _recvQueue;
+        ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex> _recvQueue;
         rbac::RBACData* _RBACData;
         uint32 expireTime;
         bool forceExit;

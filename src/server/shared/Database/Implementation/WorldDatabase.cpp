@@ -93,7 +93,6 @@ void WorldDatabaseConnection::DoPrepareStatements()
     PrepareStatement(WORLD_SEL_REQ_XP, "SELECT xp_for_next_level FROM player_xp_for_level WHERE lvl = ?", CONNECTION_SYNCH);
 
     // Bot
-    PrepareStatement(WORLD_SEL_NPCBOT_INFO, "SELECT guid, map, position_x, position_y, position_z, orientation FROM creature WHERE id = ?", CONNECTION_SYNCH);
+    PrepareStatement(WORLD_SEL_NPCBOT_TEMPLATE, "SELECT entry, trainer_race FROM creature_template WHERE scriptname = ? and trainer_class = ? and trainer_race IN (?, ?, ?, ?, ?)", CONNECTION_SYNCH);
     PrepareStatement(WORLD_SEL_NPCBOT_PET_LEVELSTATS, "SELECT hp, mana, armor, str, agi, sta, inte, spi FROM pet_levelstats WHERE creature_entry = ? AND level = ?", CONNECTION_SYNCH);
-    PrepareStatement(WORLD_UPD_NPCBOT_POSITION, "UPDATE creature SET map = ?, position_x = ?, position_y = ?, position_z = ?, orientation = ? WHERE guid = ?", CONNECTION_ASYNC);
 }

@@ -1,5 +1,4 @@
 #include "bot_ai.h"
-//#include "botmgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "Group.h"
@@ -22,7 +21,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature)
     {
-        return bot_minion_ai::OnGossipHello(player, creature, 0);
+        return bot_minion_ai::OnGossipHello(player, creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
@@ -32,23 +31,16 @@ public:
         return true;
     }
 
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code)
-    {
-        if (bot_minion_ai* ai = creature->GetBotMinionAI())
-            return ai->OnGossipSelectCode(player, creature, sender, action, code);
-        return true;
-    }
-
     struct hunter_botAI : public bot_minion_ai
     {
         hunter_botAI(Creature* creature) : bot_minion_ai(creature)
         {
-            _botclass = BOT_CLASS_HUNTER;
+            Reset();
         }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_HUNTER) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_HUNTER) != SPELL_CAST_OK)
                 return false;
 
             return bot_ai::doCast(victim, spellId, triggered);
@@ -59,17 +51,16 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
         }
 
-        void EnterCombat(Unit* u) { bot_minion_ai::EnterCombat(u); }
+        void EnterCombat(Unit*) { }
         void Aggro(Unit*) { }
         void AttackStart(Unit*) { }
         void KilledUnit(Unit*) { }
-        void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
-        void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) { bot_minion_ai::JustDied(u); }
+        void EnterEvadeMode() { }
+        void MoveInLineOfSight(Unit*) { }
+        void JustDied(Unit* u) { bot_ai::JustDied(u); }
         void DoNonCombatActions(uint32 /*diff*/) { RezGroup(GetSpell(REBIRTH_1), master);}
 
         void Counter(uint32 diff)
@@ -85,6 +76,7 @@ public:
                 temptimer = GC_Timer;
                 if (target && doCast(target, GetSpell(SCATTER_SHOT_1)))
                 {
+                    SetSpellCooldown(SCATTER_SHOT_1, 20000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -93,7 +85,10 @@ public:
             {
                 target = FindCastingTarget(35, 5, false, GetSpell(WYVERN_STING_1));
                 if (target && doCast(target, GetSpell(WYVERN_STING_1)))
+                {
+                    SetSpellCooldown(WYVERN_STING_1, 40000);
                     return;
+                }
             }
             //if (!target && FREEZING_ARROW && Trap_cd <= 10000 && Rand() < 40)
             //{
@@ -111,6 +106,7 @@ public:
                 target = FindCastingTarget(30, 0, false, GetSpell(SCARE_BEAST_1));
                 if (target && doCast(target, GetSpell(SCARE_BEAST_1)))
                 {
+                    SetSpellCooldown(SCARE_BEAST_1, 15000);
                     GC_Timer = 800;
                     return;
                 }
@@ -121,6 +117,7 @@ public:
                 temptimer = GC_Timer;
                 if (target && doCast(target, GetSpell(SILENCING_SHOT_1)))
                 {
+                    SetSpellCooldown(SILENCING_SHOT_1, 15000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -137,6 +134,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(target, GetSpell(SCATTER_SHOT_1)))
                 {
+                    SetSpellCooldown(SCATTER_SHOT_1, 20000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -155,6 +153,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(target, GetSpell(WYVERN_STING_1)))
                 {
+                    SetSpellCooldown(WYVERN_STING_1, 40000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -218,6 +217,7 @@ public:
             {
                 if (doCast(scareTarget, GetSpell(SCARE_BEAST_1), true))
                 {
+                    SetSpellCooldown(SCARE_BEAST_1, 15000); //-50% for bot
                     GC_Timer = 800;
                     return;
                 }
@@ -303,6 +303,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(FEIGN_DEATH_1)))
                 {
+                    SetSpellCooldown(FEIGN_DEATH_1, 20000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -316,6 +317,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(DETERRENCE_1)))
                 {
+                    SetSpellCooldown(DETERRENCE_1, 60000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -378,7 +380,6 @@ public:
                     SpellInfo const* spellInfo = itr->second->GetSpellInfo();
                     if (spellInfo->Dispel != DISPEL_MAGIC && spellInfo->Dispel != DISPEL_ENRAGE) continue;
                     if (spellInfo->Attributes & (SPELL_ATTR0_PASSIVE | SPELL_ATTR0_HIDDEN_CLIENTSIDE)) continue;
-                    //if (spellInfo->AttributesEx & SPELL_ATTR1_DONT_DISPLAY_IN_AURA_BAR) continue;
                     AuraApplication const* aurApp = itr->second->GetApplicationOfTarget(target->GetGUID());
                     if (aurApp && aurApp->IsPositive())
                     {
@@ -386,6 +387,7 @@ public:
                         //me->InterruptNonMeleeSpells(true, AUTO_SHOT);
                         if (doCast(target, GetSpell(TRANQ_SHOT_1)))
                         {
+                            SetSpellCooldown(TRANQ_SHOT_1, 6000); //with glyph
                             GC_Timer = temptimer;
                             return;
                         }
@@ -400,6 +402,7 @@ public:
                 //me->InterruptNonMeleeSpells(true, AUTO_SHOT);
                 if (doCast(target, GetSpell(TRANQ_SHOT_1)))
                 {
+                    SetSpellCooldown(TRANQ_SHOT_1, 6000); //with glyph
                     GC_Timer = temptimer;
                     return;
                 }
@@ -419,6 +422,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(target, GetSpell(SILENCING_SHOT_1)))
                 {
+                    SetSpellCooldown(SILENCING_SHOT_1, 15000); //-5 sec for bot
                     GC_Timer = temptimer;
                     //return;
                 }
@@ -432,6 +436,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(target, GetSpell(SILENCING_SHOT_1)))
                 {
+                    SetSpellCooldown(SILENCING_SHOT_1, 15000); //-5 sec for bot
                     GC_Timer = temptimer;
                     return;
                 }
@@ -443,8 +448,7 @@ public:
         void UpdateAI(uint32 diff)
         {
             ReduceCD(diff);
-            if (!GlobalUpdate(diff))
-                return;
+            if (IAmDead()) return;
             CheckAttackState();
             CheckAuras();
             if (wait == 0)
@@ -454,7 +458,7 @@ public:
             BreakCC(diff);
             if (CCed(me)) return;
 
-            if (Potion_cd <= diff && GetHealthPCT(me) < 67)
+            if (GetHealthPCT(me) < 67 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, HEALINGPOTION))
@@ -464,7 +468,7 @@ public:
                 }
             }
 
-            if (Potion_cd <= diff && GetManaPCT(me) < 40)
+            if (GetManaPCT(me) < 40 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, MANAPOTION))
@@ -497,7 +501,7 @@ public:
                 CheckSilence(diff);
             }
 
-            if (!CheckAttackTarget(BOT_CLASS_HUNTER))
+            if (!CheckAttackTarget(CLASS_HUNTER))
             {
                 me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
                 return;
@@ -534,6 +538,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(SCATTER_SHOT_1)))
                 {
+                    SetSpellCooldown(SCATTER_SHOT_1, 20000);
                     GC_Timer = temptimer;
                     me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
                     me->AttackStop();
@@ -553,6 +558,7 @@ public:
                     temptimer = GC_Timer;
                     if (doCast(opponent, GetSpell(RAPTOR_STRIKE_1), true))
                     {
+                        SetSpellCooldown(RAPTOR_STRIKE_1, 6000);
                         GC_Timer = temptimer;
                         return;
                     }
@@ -573,7 +579,10 @@ public:
                 {
                     temptimer = GC_Timer;
                     if (doCast(me, GetSpell(DISENGAGE_1)))
+                    {
+                        SetSpellCooldown(DISENGAGE_1, 16000); //improved, with glyph
                         GC_Timer = temptimer;
+                    }
                 }
 
                 return; //don't try to do anything else in melee
@@ -590,6 +599,7 @@ public:
                 if (doCast(opponent, GetSpell(HUNTERS_MARK_1)))
                 {
                     markTarget = opponent;
+                    SetSpellCooldown(HUNTERS_MARK_1, 2000); //1500 + 500 for bot
                     GC_Timer = temptimer;
                     //return;
                 }
@@ -609,6 +619,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(KILL_SHOT_1)))
                 {
+                    SetSpellCooldown(KILL_SHOT_1, 8000); //with glyph
                     GC_Timer = temptimer;
                     return;
                 }
@@ -623,6 +634,7 @@ public:
             {
                 if (doCast(opponent, GetSpell(CONCUSSIVE_SHOT_1)))
                 {
+                    SetSpellCooldown(CONCUSSIVE_SHOT_1, 10000); //improved
                     GC_Timer = 800;
                     return;
                 }
@@ -635,7 +647,10 @@ public:
                 {
                     temptimer = GC_Timer;
                     if (doCast(opponent, GetSpell(DISTRACTING_SHOT_1)))
+                    {
+                        SetSpellCooldown(DISTRACTING_SHOT_1, 8000);
                         GC_Timer = temptimer;
+                    }
                 }
             }
             //BLACK ARROW //custom cd condition
@@ -655,13 +670,19 @@ public:
             {
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(RAPID_FIRE_1)))
+                {
+                    SetSpellCooldown(RAPID_FIRE_1, 90000); //1.5 min for bot
                     GC_Timer = temptimer;
+                }
             }
             //EXPLOSIVE SHOT
             if (IsSpellReady(EXPLOSIVE_SHOT_1, diff) && HasRole(BOT_ROLE_DPS))
             {
                 if (doCast(opponent, GetSpell(EXPLOSIVE_SHOT_1)))
+                {
+                    SetSpellCooldown(EXPLOSIVE_SHOT_1, 6000);
                     return;
+                }
 
                 SetSpellCooldown(EXPLOSIVE_SHOT_1, 500); //fail
             }
@@ -679,6 +700,7 @@ public:
                     else if (Rand() < 40 && doCast(opponent, SCORPID_STING))
                     {
                         stingTargetGuid = opponent->GetGUID();
+                        SetSpellCooldown(SCORPID_STING_1, 18000);
                         GC_Timer = 800;
                         return;
                     }
@@ -689,7 +711,10 @@ public:
                 !opponent->HasAuraType(SPELL_AURA_MOD_DISARM) && Rand() < 30)
             {
                 if (doCast(opponent, GetSpell(CHIMERA_SHOT_1)))
+                {
+                    SetSpellCooldown(CHIMERA_SHOT_1, 9000); //with glyph
                     return;
+                }
             }
             //MULTI-SHOT
             if (IsSpellReady(MULTISHOT_1, diff) && HasRole(BOT_ROLE_DPS) && Rand() < 60)
@@ -698,6 +723,7 @@ public:
                 {
                     if (doCast(target, GetSpell(MULTISHOT_1)))
                     {
+                        SetSpellCooldown(MULTISHOT_1, 8000); //with glyph
                         GC_Timer = 800;
                         return;
                     }
@@ -711,7 +737,10 @@ public:
                 if (Unit* target = FindAOETarget(35, true, false))
                 {
                     if (doCast(target, GetSpell(VOLLEY_1)))
+                    {
+                        SetSpellCooldown(VOLLEY_1, 5000);
                         return;
+                    }
                 }
 
                 SetSpellCooldown(VOLLEY_1, 1000); //fail
@@ -720,7 +749,10 @@ public:
             if (IsSpellReady(AIMED_SHOT_1, diff) && HasRole(BOT_ROLE_DPS) && Rand() < 80)
             {
                 if (doCast(opponent, GetSpell(AIMED_SHOT_1)))
+                {
+                    SetSpellCooldown(AIMED_SHOT_1, 8000); //with glyph
                     return;
+                }
             }
             //ARCANE SHOT
             if (IsSpellReady(ARCANE_SHOT_1, diff) && HasRole(BOT_ROLE_DPS) && Rand() < 50)
@@ -732,7 +764,7 @@ public:
 
         void CheckBattleRez(uint32 diff)
         {
-            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
 
             Group* gr = master->GetGroup();
             if (!gr)
@@ -754,7 +786,7 @@ public:
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                    BotWhisper("Rezzing You", master);
+					me->MonsterWhisper("Rezzing You", master);
 
                 return;
             }
@@ -779,13 +811,11 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    BotWhisper("Rezzing You", tPlayer);
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
         }
-
-        void ApplyClassDamageMultiplierMelee(uint32& /*damage*/, CalcDamageInfo& /*damageinfo*/) const {}
 
         void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool& crit) const
         {
@@ -943,15 +973,29 @@ public:
             OnSpellHit(caster, spell);
         }
 
-        void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
+        void DamageDealt(Unit* victim, uint32& /*damage*/, DamageEffectType damageType)
         {
-            bot_ai::DamageDealt(victim, damage, damageType);
+            if (victim == me)
+                return;
+
+            if (damageType == DIRECT_DAMAGE || damageType == SPELL_DIRECT_DAMAGE)
+            {
+                for (uint8 i = 0; i != MAX_BOT_CTC_SPELLS; ++i)
+                {
+                    if (_ctc[i].first && !_ctc[i].second)
+                    {
+                        if (urand(1,100) <= CalcCTC(_ctc[i].first))
+                            _ctc[i].second = 1000;
+
+                        if (_ctc[i].second > 0)
+                            me->CastSpell(victim, _ctc[i].first, true);
+                    }
+                }
+            }
         }
 
         void DamageTaken(Unit* u, uint32& /*damage*/)
         {
-            if (!u->IsInCombat() && !me->IsInCombat())
-                return;
             OnOwnerDamagedBy(u);
         }
 
@@ -973,16 +1017,27 @@ public:
 
             markTarget = NULL;
 
-            DefaultInit();
+            if (master)
+            {
+                SetStats(true);
+                InitRoles();
+                ApplyPassives(CLASS_HUNTER);
+             }
         }
 
         void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
+
             if (Trap_cd > diff)                     Trap_cd -= diff;
 
             if (ScorpidSting_Timer > diff)          ScorpidSting_Timer -= diff;
             if (Aspect_Timer > diff)                Aspect_Timer -= diff;
         }
+
+        bool CanRespawn()
+        {return false;}
 
         void InitSpells()
         {
@@ -1024,23 +1079,46 @@ public:
         void ApplyClassPassives()
         {
             uint8 level = master->getLevel();
-
-            RefreshAura(RAPID_KILLING, level >= 20 ? 1 : 0);
-            RefreshAura(CONCUSSIVE_BARRAGE, level >= 30 ? 1 : 0);
-            RefreshAura(PIERCING_SHOTS, level >= 40 ? 1 : 0);
-            RefreshAura(TRUESHOT_AURA, level >= 40 ? 1 : 0);
-            RefreshAura(RAPID_RECUPERATION, level >= 45 ? 1 : 0);
-            RefreshAura(MASTER_MARKSMAN, level >= 45 ? 1 : 0);
-            RefreshAura(WILD_QUIVER, level >= 70 ? 3 : level >= 60 ? 2 : level >= 50 ? 1 : 0);
-            RefreshAura(SUREFOOTED, level >= 15 ? 1 : 0);
-            RefreshAura(ENTRAPMENT, level >= 15 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN5, level >= 67 ? 3 : level >= 58 ? 2 : level >= 50 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN4, level >= 49 && level < 50 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN3, level >= 48 && level < 49 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN2, level >= 47 && level < 48 ? 1 : 0);
-            RefreshAura(MASTER_TACTICIAN1, level >= 46 && level < 47 ? 1 : 0);
-            RefreshAura(NOXIOUS_STINGS, level >= 45 ? 1 : 0);
-            RefreshAura(HUNTING_PARTY, level >= 55 ? 1 : 0);
+            if (level >= 20)
+                RefreshAura(RAPID_KILLING); //20%
+            if (level >= 30)
+                RefreshAura(CONCUSSIVE_BARRAGE); //100%
+            if (level >= 40)
+                RefreshAura(PIERCING_SHOTS); //30%
+            if (level >= 40)
+                RefreshAura(TRUESHOT_AURA); //10%
+            if (level >= 45)
+                RefreshAura(RAPID_RECUPERATION); //4%
+            if (level >= 45)
+                RefreshAura(MASTER_MARKSMAN); //5%
+            if (level >= 70)
+                RefreshAura(WILD_QUIVER,3); //36%
+            else if (level >= 60)
+                RefreshAura(WILD_QUIVER,2); //24%
+            else if (level >= 50)
+                RefreshAura(WILD_QUIVER); //12%
+            if (level >= 15)
+                RefreshAura(SUREFOOTED); //30%
+            if (level >= 15)
+                RefreshAura(ENTRAPMENT); //4 sec
+            if (level >= 67)
+                RefreshAura(MASTER_TACTICIAN5,3); //30%
+            else if (level >= 58)
+                RefreshAura(MASTER_TACTICIAN5,2); //20%
+            else if (level >= 50)
+                RefreshAura(MASTER_TACTICIAN5); //10%
+            else if (level >= 49)
+                RefreshAura(MASTER_TACTICIAN4); //8%
+            else if (level >= 48)
+                RefreshAura(MASTER_TACTICIAN3); //6%
+            else if (level >= 47)
+                RefreshAura(MASTER_TACTICIAN2); //4%
+            else if (level >= 46)
+                RefreshAura(MASTER_TACTICIAN1); //2%
+            if (level >= 45)
+                RefreshAura(NOXIOUS_STINGS); //50%
+            if (level >= 55)
+                RefreshAura(HUNTING_PARTY); //100%
         }
 
         bool CanUseManually(uint32 basespell) const
@@ -1058,7 +1136,7 @@ public:
         }
 
     private:
-        typedef std::unordered_map<uint32 /*spellId*/, int32 /*manaCost*/> ManaRestoreList;
+		typedef std::unordered_map<uint32 /*spellId*/, int32 /*manaCost*/> ManaRestoreList;
         ManaRestoreList TotH;
         uint32 Trap_cd;
         uint32 ScorpidSting_Timer, Aspect_Timer;

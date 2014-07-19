@@ -26,7 +26,7 @@ class CharacterDatabaseConnection : public MySQLConnection
     public:
         //- Constructors for sync and async connections
         CharacterDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo) { }
-        CharacterDatabaseConnection(ProducerConsumerQueue<SQLOperation*>* q, MySQLConnectionInfo& connInfo) : MySQLConnection(q, connInfo) { }
+        CharacterDatabaseConnection(ACE_Activation_Queue* q, MySQLConnectionInfo& connInfo) : MySQLConnection(q, connInfo) { }
 
         //- Loads database type specific prepared statements
         void DoPrepareStatements();
@@ -536,18 +536,13 @@ enum CharacterDatabaseStatements
 
     // Bot
     CHAR_SEL_NPCBOTS,
-    CHAR_SEL_NPCBOT_OWNER,
-    CHAR_UPD_NPCBOT_OWNER,
-    CHAR_UPD_NPCBOT_OWNER_ALL,
+    CHAR_DEL_NPCBOTS,
+    CHAR_INS_NPCBOT,
+    CHAR_UPD_NPCBOT_EQUIP,
+    CHAR_UPD_NPCBOT_ACTIVE,
+    CHAR_SEL_NPCBOT_EQUIP,
     CHAR_SEL_NPCBOT_ROLES,
     CHAR_UPD_NPCBOT_ROLES,
-    CHAR_SEL_NPCBOT_EQUIP,
-    CHAR_SEL_NPCBOT_EQUIP_BY_ITEM_INSTANCE,
-    CHAR_UPD_NPCBOT_EQUIP,
-    CHAR_DEL_NPCBOT,
-    CHAR_INS_NPCBOT,
-    CHAR_UPD_NPCBOT_FACTION,
-    CHAR_SEL_NPCBOT_FACTION,
 
     MAX_CHARACTERDATABASE_STATEMENTS
 };

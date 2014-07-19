@@ -26,6 +26,7 @@
 #include "MapReference.h"
 #include "Player.h"
 #include "CreatureTextMgr.h"
+#include "Group.h"
 
 //Disable CreatureAI when charmed
 void CreatureAI::OnCharmed(bool /*apply*/)
@@ -204,8 +205,7 @@ bool CreatureAI::UpdateVictimWithGaze()
 
     if (Unit* victim = me->SelectVictim())
         AttackStart(victim);
-
-    return me->GetVictim() != nullptr;
+    return me->GetVictim();
 }
 
 bool CreatureAI::UpdateVictim()
@@ -217,8 +217,7 @@ bool CreatureAI::UpdateVictim()
     {
         if (Unit* victim = me->SelectVictim())
             AttackStart(victim);
-
-        return me->GetVictim() != nullptr;
+        return me->GetVictim();
     }
     else if (me->getThreatManager().isThreatListEmpty())
     {
@@ -269,3 +268,57 @@ Creature* CreatureAI::DoSummonFlyer(uint32 entry, WorldObject* obj, float flight
     pos.m_positionZ += flightZ;
     return me->SummonCreature(entry, pos, summonType, despawnTime);
 }
+
+void CreatureAI::DoAttackerAreaInCombat(Unit* attacker, float range, Unit* pUnit)
+{
+    if (!attacker)
+        attacker = me;
+
+    if (!pUnit)
+        pUnit = me;
+
+    Map *map = pUnit->GetMap();
+
+    if (!map->IsDungeon())
+        return;
+
+    if (!pUnit->CanHaveThreatList() || pUnit->getThreatManager().isThreatListEmpty())
+        return;
+
+    Map::PlayerList const& playerList = map->GetPlayers();
+
+	if (playerList.isEmpty())
+        return;
+
+    for (Map::PlayerList::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
+    {
+        if (Player* i_pl = itr->GetSource())
+            if (i_pl->IsAlive() && attacker->GetDistance(i_pl) <= range )
+            {
+                pUnit->SetInCombatWith(i_pl);
+                i_pl->SetInCombatWith(pUnit);
+                pUnit->AddThreat(i_pl, 0.0f);
+            }
+    }
+}
+
+void CreatureAI::DoAttackerGroupInCombat(Player* attacker)
+ {
+     if(attacker)
+     {
+         if( Group *pGroup = attacker->GetGroup() )
+         {
+             for(GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
+             {
+                 Player *pGroupGuy = itr->GetSource();
+ 
+                 if(pGroupGuy && pGroupGuy->IsAlive() && pGroupGuy->GetMapId() == me->GetMapId())
+                 {
+                     me->SetInCombatWith(pGroupGuy);
+                     pGroupGuy->SetInCombatWith(me);
+                     me->AddThreat(pGroupGuy, 0.0f);
+                 }
+             }
+         }
+     }
+ }

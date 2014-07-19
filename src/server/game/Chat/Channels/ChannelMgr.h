@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "Channel.h"
+#include <ace/Singleton.h>
 
 #include <map>
 #include <string>
@@ -30,16 +31,11 @@ class ChannelMgr
 {
     typedef std::map<std::wstring, Channel*> ChannelMap;
 
-    protected:
-        ChannelMgr() : team(0) { }
-        ~ChannelMgr();
-
     public:
-        static ChannelMgr* instance()
-        {
-            static ChannelMgr* instance = new ChannelMgr();
-            return instance;
-        }
+        ChannelMgr() : team(0)
+        { }
+
+        ~ChannelMgr();
 
         static ChannelMgr * forTeam(uint32 team);
         void setTeam(uint32 newTeam) { team = newTeam; }

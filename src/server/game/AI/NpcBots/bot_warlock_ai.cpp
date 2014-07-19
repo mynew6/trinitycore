@@ -1,5 +1,4 @@
 #include "bot_ai.h"
-//#include "botmgr.h"
 #include "Group.h"
 #include "Player.h"
 #include "ScriptMgr.h"
@@ -22,7 +21,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature)
     {
-        return bot_minion_ai::OnGossipHello(player, creature, 0);
+        return bot_minion_ai::OnGossipHello(player, creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
@@ -32,35 +31,25 @@ public:
         return true;
     }
 
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code)
-    {
-        if (bot_minion_ai* ai = creature->GetBotMinionAI())
-            return ai->OnGossipSelectCode(player, creature, sender, action, code);
-        return true;
-    }
-
     struct warlock_botAI : public bot_minion_ai
     {
-        warlock_botAI(Creature* creature) : bot_minion_ai(creature)
-        {
-            _botclass = BOT_CLASS_WARLOCK;
-        }
+        warlock_botAI(Creature* creature) : bot_minion_ai(creature) { }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_WARRIOR) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_WARRIOR) != SPELL_CAST_OK)
                 return false;
 
             return bot_ai::doCast(victim, spellId, triggered);
         }
 
-        void EnterCombat(Unit* u) { bot_minion_ai::EnterCombat(u); }
+        void EnterCombat(Unit*) { }
         void Aggro(Unit*) { }
         void AttackStart(Unit*) { }
         void KilledUnit(Unit*) { }
-        void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
-        void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) { me->SetBotsPetDied(); bot_minion_ai::JustDied(u); }
+        void EnterEvadeMode() { }
+        void MoveInLineOfSight(Unit*) { }
+        void JustDied(Unit* u) { me->SetBotsPetDied(); bot_ai::JustDied(u); }
         void DoNonCombatActions() { RezGroup(GetSpell(REBIRTH_1), master); }
 
         void StartAttack(Unit* u, bool force = false)
@@ -68,7 +57,6 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
             feartimer = std::max<uint32>(feartimer, 1000);
         }
@@ -76,8 +64,7 @@ public:
         void UpdateAI(uint32 diff)
         {
             ReduceCD(diff);
-            if (!GlobalUpdate(diff))
-                return;
+            if (IAmDead()) return;
             CheckAttackState();
             CheckAuras();
             if (wait == 0)
@@ -94,7 +81,7 @@ public:
             //        SummonBotsPet(PET_VOIDWALKER);
 
             //TODO: implement healthstone
-            if (Potion_cd <= diff && GetHealthPCT(me) < 67)
+            if (GetHealthPCT(me) < 50 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, HEALINGPOTION))
@@ -103,7 +90,7 @@ public:
                     GC_Timer = temptimer;
                 }
             }
-            if (Potion_cd <= diff && GetManaPCT(me) < 50)
+            if (GetManaPCT(me) < 50 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, MANAPOTION))
@@ -117,7 +104,7 @@ public:
             else
                 CheckBattleRez(diff);
 
-            if (!CheckAttackTarget(BOT_CLASS_WARLOCK))
+            if (!CheckAttackTarget(CLASS_WARLOCK))
                 return;
 
             DoNormalAttack(diff);
@@ -143,7 +130,10 @@ public:
             {
                 Unit* blizztarget = FindAOETarget(30, true);
                 if (blizztarget && doCast(blizztarget, GetSpell(RAIN_OF_FIRE_1)))
+                {
+                    SetSpellCooldown(RAIN_OF_FIRE_1, 5000);
                     return;
+                }
                 SetSpellCooldown(RAIN_OF_FIRE_1, 2000);//fail
             }
 
@@ -165,7 +155,10 @@ public:
             if (IsSpellReady(HAUNT_1, diff) && HasRole(BOT_ROLE_DPS) && dist < 30 && Rand() < 25 &&
                 !opponent->HasAura(GetSpell(HAUNT_1), me->GetGUID()) &&
                 doCast(opponent, GetSpell(HAUNT_1)))
+            {
+                SetSpellCooldown(HAUNT_1, 8000);
                 return;
+            }
 
             if (GC_Timer <= diff && HasRole(BOT_ROLE_DPS) && dist < 30 && Rand() < 15 && !Afflicted(opponent))
             {
@@ -178,11 +171,17 @@ public:
             if (IsSpellReady(CONFLAGRATE_1, diff) && HasRole(BOT_ROLE_DPS) && dist < 30 && Rand() < 35 &&
                 HasAuraName(opponent, IMMOLATE_1) &&
                 doCast(opponent, GetSpell(CONFLAGRATE_1)))
+            {
+                SetSpellCooldown(CONFLAGRATE_1, 8000);
                 return;
+            }
 
             if (IsSpellReady(CHAOS_BOLT_1, diff) && HasRole(BOT_ROLE_DPS) && dist < 30 && Rand() < 50 &&
                 doCast(opponent, GetSpell(CHAOS_BOLT_1)))
+            {
+                SetSpellCooldown(CHAOS_BOLT_1, me->getLevel() < 80 ? 10000 : 8000);
                 return;
+            }
 
             if (IsSpellReady(SHADOW_BOLT_1, diff) && HasRole(BOT_ROLE_DPS) && dist < 30 &&
                 doCast(opponent, GetSpell(SHADOW_BOLT_1)))
@@ -293,9 +292,14 @@ public:
             //value *= pct_mod;
         }
 
-        void CheckBattleRez(uint32 diff)
+        void SpellHit(Unit* caster, SpellInfo const* spell)
         {
-            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+            OnSpellHit(caster, spell);
+        }
+
+		void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
 
             Group* gr = master->GetGroup();
             if (!gr)
@@ -317,7 +321,7 @@ public:
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                    BotWhisper("Rezzing You", master);
+					me->MonsterWhisper("Rezzing You", master);
 
                 return;
             }
@@ -342,26 +346,35 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    BotWhisper("Rezzing You", tPlayer);
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
         }
-
-        void SpellHit(Unit* caster, SpellInfo const* spell)
+		
+        void DamageDealt(Unit* victim, uint32& /*damage*/, DamageEffectType damageType)
         {
-            OnSpellHit(caster, spell);
-        }
+            if (victim == me)
+                return;
 
-        void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
-        {
-            bot_ai::DamageDealt(victim, damage, damageType);
+            if (damageType == DIRECT_DAMAGE || damageType == SPELL_DIRECT_DAMAGE)
+            {
+                for (uint8 i = 0; i != MAX_BOT_CTC_SPELLS; ++i)
+                {
+                    if (_ctc[i].first && !_ctc[i].second)
+                    {
+                        if (urand(1,100) <= CalcCTC(_ctc[i].first))
+                            _ctc[i].second = 1000;
+
+                        if (_ctc[i].second > 0)
+                            me->CastSpell(victim, _ctc[i].first, true);
+                    }
+                }
+            }
         }
 
         void DamageTaken(Unit* u, uint32& /*damage*/)
         {
-            if (!u->IsInCombat() && !me->IsInCombat())
-                return;
             OnOwnerDamagedBy(u);
         }
 
@@ -374,13 +387,24 @@ public:
         {
             feartimer = 0;
 
-            DefaultInit();
+            if (master)
+            {
+                SetStats(true);
+                InitRoles();
+                ApplyPassives(CLASS_WARLOCK);
+            }
         }
 
         void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
+
             if (feartimer > diff)                   feartimer -= diff;
         }
+
+        bool CanRespawn()
+        {return false;}
 
         void InitSpells()
         {
@@ -438,14 +462,11 @@ public:
 
     struct voidwalker_botAI : public bot_pet_ai
     {
-        voidwalker_botAI(Creature* creature) : bot_pet_ai(creature)
-        {
-            _botclass = BOT_CLASS_MAGE;
-        }
+        voidwalker_botAI(Creature* creature) : bot_pet_ai(creature) { }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_NONE) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_NONE) != SPELL_CAST_OK)
                 return false;
             return bot_ai::doCast(victim, spellId, triggered);
         }
@@ -464,7 +485,6 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
         }
 
@@ -513,6 +533,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(TORMENT_1)))
                 {
+                    SetSpellCooldown(TORMENT_1, 5000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -543,14 +564,21 @@ public:
         {
             if (master && m_creatureOwner)
             {
-                DefaultInit();
+                SetStats(true);
+                ApplyPassives(PET_TYPE_VOIDWALKER);
+                ApplyClassPassives();
                 SetBaseArmor(162 * master->getLevel());
             }
         }
 
-        void ReduceCD(uint32 /*diff*/)
+        void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
         }
+
+        bool CanRespawn()
+        {return false;}
 
         void InitSpells()
         {

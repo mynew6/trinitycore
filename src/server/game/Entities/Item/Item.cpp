@@ -319,7 +319,7 @@ void Item::UpdateDuration(Player* owner, uint32 diff)
 
 void Item::SaveToDB(SQLTransaction& trans)
 {
-    bool isInTransaction = bool(trans);
+    bool isInTransaction = !(trans.null());
     if (!isInTransaction)
         trans = CharacterDatabase.BeginTransaction();
 
@@ -1138,7 +1138,7 @@ void Item::SaveRefundDataToDB()
 
 void Item::DeleteRefundDataFromDB(SQLTransaction* trans)
 {
-    if (trans)
+    if (trans && !trans->null())
     {
         PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_ITEM_REFUND_INSTANCE);
         stmt->setUInt32(0, GetGUIDLow());

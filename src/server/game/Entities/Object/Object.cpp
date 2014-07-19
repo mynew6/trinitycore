@@ -1143,11 +1143,6 @@ void WorldObject::setActive(bool on)
     if (GetTypeId() == TYPEID_PLAYER)
         return;
 
-    //bot
-    if (on == false && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
-        return;
-    //end bot
-
     m_isActive = on;
 
     if (!IsInWorld())
@@ -2231,7 +2226,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     summon->InitSummon();
 
     //npcbot: totem emul step 2
-    //if (mask == UNIT_MASK_TOTEM)
+    if (mask == UNIT_MASK_TOTEM)
         if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->GetIAmABot())
             summoner->ToCreature()->OnBotSummon(summon);
     //end npcbot

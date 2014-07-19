@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#include <limits.h>
 
 #include "PathCommon.h"
 #include "MapBuilder.h"
@@ -28,6 +27,7 @@
 #include "DetourCommon.h"
 
 #include "DisableMgr.h"
+#include <ace/OS_NS_unistd.h>
 
 uint32 GetLiquidFlags(uint32 /*liquidType*/) { return 0; }
 namespace DisableMgr
@@ -166,28 +166,11 @@ namespace MMAP
     }
 
     /**************************************************************************/
-
-    void MapBuilder::WorkerThread()
-    {
-        while (1)
-        {
-            uint32 mapId;
-
-            _queue.WaitAndPop(mapId);
-
-            if (_cancelationToken)
-                return;
-
-            buildMap(mapId);
-        }
-    }
-
     void MapBuilder::buildAllMaps(int threads)
     {
-        for (size_t i = 0; i < threads; ++i)
-        {
-            _workerThreads.push_back(std::thread(&MapBuilder::WorkerThread, this));
-        }
+        std::vector<BuilderThread*> _threads;
+
+        BuilderThreadPool* pool = threads > 0 ? new BuilderThreadPool() : NULL;
 
         m_tiles.sort([](MapTiles a, MapTiles b)
         {
@@ -200,25 +183,23 @@ namespace MMAP
             if (!shouldSkipMap(mapID))
             {
                 if (threads > 0)
-                    _queue.Push(mapID);
+                    pool->Enqueue(new MapBuildRequest(mapID));
                 else
                     buildMap(mapID);
             }
         }
 
-        while (!_queue.Empty())
+        for (int i = 0; i < threads; ++i)
+            _threads.push_back(new BuilderThread(this, pool->Queue()));
+
+        // Free memory
+        for (std::vector<BuilderThread*>::iterator _th = _threads.begin(); _th != _threads.end(); ++_th)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            (*_th)->wait();
+            delete *_th;
         }
 
-        _cancelationToken = true;
-
-        _queue.Cancel();
-
-        for (auto& thread : _workerThreads)
-        {
-            thread.join();
-        }
+        delete pool;
     }
 
     /**************************************************************************/
@@ -368,7 +349,7 @@ namespace MMAP
     void MapBuilder::buildMap(uint32 mapID)
     {
 #ifndef __APPLE__
-        //printf("[Thread %u] Building map %03u:\n", uint32(ACE_Thread::self()), mapID);
+        printf("[Thread %u] Building map %03u:\n", uint32(ACE_Thread::self()), mapID);
 #endif
 
         std::set<uint32>* tiles = getTileList(mapID);

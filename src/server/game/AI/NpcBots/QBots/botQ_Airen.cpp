@@ -17,7 +17,7 @@ class Airen_chapter1 : public CreatureScript
 public:
     Airen_chapter1() : CreatureScript("npc_Airen_qI") { }
 
-    CreatureAI* GetAI(Creature* creature) const
+	CreatureAI* GetAI(Creature* creature) const override
     {
         return new Airen_AI(creature);
     }
@@ -25,7 +25,7 @@ public:
     bool OnGossipHello(Player* player, Creature* creature)
     {
         player->PlayerTalkClass->GetGossipMenu().AddMenuItem(-1, GOSSIP_ICON_CHAT, "nothing here", 6000, ACT + 1, "nothing here either", 0 * COPPER, true);
-        player->PlayerTalkClass->SendGossipMenu(GOSSIP_MURDER, creature->GetGUID());
+        player->PlayerTalkClass->SendGossipMenu(creature->GetEntry(), creature->GetGUID());
 
         std::ostringstream msg;
         msg << "..." << player->GetName() << ", huh?";

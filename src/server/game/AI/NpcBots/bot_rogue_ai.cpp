@@ -1,5 +1,4 @@
 #include "bot_ai.h"
-//#include "botmgr.h"
 #include "Group.h"
 #include "Player.h"
 #include "ScriptMgr.h"
@@ -56,7 +55,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature)
     {
-        return bot_minion_ai::OnGossipHello(player, creature, 0);
+        return bot_minion_ai::OnGossipHello(player, creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
@@ -66,23 +65,16 @@ public:
         return true;
     }
 
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code)
-    {
-        if (bot_minion_ai* ai = creature->GetBotMinionAI())
-            return ai->OnGossipSelectCode(player, creature, sender, action, code);
-        return true;
-    }
-
     struct rogue_botAI : public bot_minion_ai
     {
         rogue_botAI(Creature* creature) : bot_minion_ai(creature)
         {
-            _botclass = BOT_CLASS_ROGUE;
+            Reset();
         }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_ROGUE) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_ROGUE) != SPELL_CAST_OK)
                 return false;
             return bot_ai::doCast(victim, spellId, triggered);
         }
@@ -92,17 +84,16 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
         }
 
-        void EnterCombat(Unit* u) { bot_minion_ai::EnterCombat(u); }
+        void EnterCombat(Unit*) { }
         void Aggro(Unit*) { }
         void AttackStart(Unit*) { }
         void KilledUnit(Unit*) { }
-        void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
-        void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) { comboPoints = 0; tempComboPoints = 0; bot_minion_ai::JustDied(u); }
+        void EnterEvadeMode() { }
+        void MoveInLineOfSight(Unit*) { }
+        void JustDied(Unit* u) { comboPoints = 0; tempComboPoints = 0; bot_ai::JustDied(u); }
         void DoNonCombatActions(uint32 /*diff*/)
         { RezGroup(GetSpell(REBIRTH_1), master); }
 
@@ -136,8 +127,7 @@ public:
         void UpdateAI(uint32 diff)
         {
             ReduceCD(diff);
-            if (!GlobalUpdate(diff))
-                return;
+            if (IAmDead()) return;
             CheckAttackState();
             CheckAuras();
             if (wait == 0)
@@ -147,7 +137,7 @@ public:
             BreakCC(diff);
             if (CCed(me)) return;
 
-            if (Potion_cd <= diff && GetHealthPCT(me) < 67)
+            if (GetHealthPCT(me) < 67 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, HEALINGPOTION))
@@ -162,7 +152,7 @@ public:
             else
                 CheckBattleRez(diff);
 
-            if (!CheckAttackTarget(BOT_CLASS_ROGUE))
+            if (!CheckAttackTarget(CLASS_ROGUE))
                 return;
 
             Attack(diff);
@@ -192,6 +182,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(BLADE_FLURRY_1)))
                 {
+                    SetSpellCooldown(BLADE_FLURRY_1, 75000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -207,6 +198,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(KICK_1)))
                 {
+                    SetSpellCooldown(KICK_1, 8000); //improved
                     GC_Timer = temptimer;
                     //return;
                 }
@@ -219,6 +211,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(SHADOWSTEP_1)))
                 {
+                    SetSpellCooldown(SHADOWSTEP_1, 20000);
                     GC_Timer = temptimer;
                     //return;
                 }
@@ -314,6 +307,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(DISMANTLE_1)))
                 {
+                    SetSpellCooldown(DISMANTLE_1, 60000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -398,7 +392,7 @@ public:
 
         void CheckBattleRez(uint32 diff)
         {
-            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
 
             Group* gr = master->GetGroup();
             if (!gr)
@@ -420,7 +414,7 @@ public:
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                    BotWhisper("Rezzing You", master);
+					me->MonsterWhisper("Rezzing You", master);
 
                 return;
             }
@@ -445,13 +439,12 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    BotWhisper("Rezzing You", tPlayer);
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
         }
-
-        void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
+        void DamageDealt(Unit* victim, uint32& /*damage*/, DamageEffectType damageType)
         {
             uint32 WOUND_POISON = GetSpell(WOUND_POISON_1);
             uint32 MIND_NUMBING_POISON = GetSpell(MIND_NUMBING_POISON_1);
@@ -490,7 +483,23 @@ public:
                 }
             }
 
-            bot_ai::DamageDealt(victim, damage, damageType);
+            if (victim == me)
+                return;
+
+            if (damageType == DIRECT_DAMAGE || damageType == SPELL_DIRECT_DAMAGE)
+            {
+                for (uint8 i = 0; i != MAX_BOT_CTC_SPELLS; ++i)
+                {
+                    if (_ctc[i].first && !_ctc[i].second)
+                    {
+                        if (urand(1,100) <= CalcCTC(_ctc[i].first))
+                            _ctc[i].second = 1000;
+
+                        if (_ctc[i].second > 0)
+                            me->CastSpell(victim, _ctc[i].first, true);
+                    }
+                }
+            }
         }
 
         void SpellHit(Unit* caster, SpellInfo const* spell)
@@ -505,7 +514,7 @@ public:
             //combo points use up
             if (spellId == GetSpell(SLICE_DICE_1))
             {
-                SetSpellCooldown(SLICE_DICE_1, 15000 + (tempComboPoints-1)*4500); //no initial cooldown
+                SetSpellCooldown(SLICE_DICE_1, 15000 + (tempComboPoints-1)*4500);
                 GC_Timer = 800;
 
                 if (Aura* dice = me->GetAura(GetSpell(SLICE_DICE_1)))
@@ -520,7 +529,7 @@ public:
             }
             else if (spellId == GetSpell(RUPTURE_1))
             {
-                SetSpellCooldown(RUPTURE_1, 8000 + (tempComboPoints-1)*2000 + 4000); //no initial cooldown
+                SetSpellCooldown(RUPTURE_1, 8000 + (tempComboPoints-1)*2000 + 4000);
                 GC_Timer = 800;
 
                 if (Aura* rupture = target->GetAura(GetSpell(RUPTURE_1), me->GetGUID()))
@@ -533,6 +542,8 @@ public:
             }
             else if (spellId == GetSpell(KIDNEY_SHOT_1))
             {
+                SetSpellCooldown(KIDNEY_SHOT_1, 20000);
+
                 if (Aura* kidney = target->GetAura(GetSpell(KIDNEY_SHOT_1), me->GetGUID()))
                 {
                     uint32 dur = kidney->GetDuration() + tempComboPoints*1000;
@@ -680,7 +691,7 @@ public:
                         dur = std::min<int32>(dur, 30000);
                         rupture->SetDuration(dur);
                         rupture->SetMaxDuration(dur);
-                        SetSpellCooldown(RUPTURE_1, dur - 2000); //no initial cooldown
+                        SetSpellCooldown(RUPTURE_1, dur - 2000);
                     }
                 }
             }
@@ -695,7 +706,7 @@ public:
                     dur = std::min<int32>(dur, 59000);
                     dice->SetDuration(dur);
                     dice->SetMaxDuration(dur);
-                    SetSpellCooldown(SLICE_DICE_1, dur - 2000); //no initial cooldown
+                    SetSpellCooldown(SLICE_DICE_1, dur - 2000);
                 }
             }
 
@@ -734,8 +745,6 @@ public:
 
         void DamageTaken(Unit* u, uint32& /*damage*/)
         {
-            if (!u->IsInCombat() && !me->IsInCombat())
-                return;
             OnOwnerDamagedBy(u);
         }
 
@@ -755,18 +764,28 @@ public:
 
             me->setPowerType(POWER_ENERGY);
             //10 energy gained per stack
-            DefaultInit();
-
             RefreshAura(GLADIATOR_VIGOR, 10);
+
+            if (master)
+            {
+                SetStats(true);
+                InitRoles();
+                ApplyPassives(CLASS_ROGUE);
+            }
 
             me->SetPower(POWER_ENERGY, me->GetMaxPower(POWER_ENERGY));
         }
 
-        void ReduceCD(uint32 /*diff*/)
+        void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
             //if (Shadowstep_eff_Timer > diff)        Shadowstep_eff_Timer -= diff;
             //else if (shadowstep)                    shadowstep = false;
         }
+
+        bool CanRespawn()
+        {return false;}
 
         void InitSpells()
         {
@@ -792,26 +811,62 @@ public:
         {
             uint8 level = master->getLevel();
 
-            RefreshAura(COMBAT_POTENCY5, level >= 70 ? 2 : level >= 55 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY4, level >= 52 && level < 55 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY3, level >= 49 && level < 52 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY2, level >= 47 && level < 49 ? 1 : 0);
-            RefreshAura(COMBAT_POTENCY1, level >= 45 && level < 47 ? 1 : 0);
-            RefreshAura(SEAL_FATE5, level >= 35 ? 1 : 0);
-            RefreshAura(SEAL_FATE4, level >= 32 && level < 35 ? 1 : 0);
-            RefreshAura(SEAL_FATE3, level >= 29 && level < 32 ? 1 : 0);
-            RefreshAura(SEAL_FATE2, level >= 27 && level < 29 ? 1 : 0);
-            RefreshAura(SEAL_FATE1, level >= 25 && level < 27 ? 1 : 0);
-            RefreshAura(VITALITY, level >= 70 ? 3 : level >= 55 ? 2 : level >= 40 ? 1 : 0);
-            RefreshAura(TURN_THE_TABLES, level >= 55 ? 1 : 0);
-            RefreshAura(DEADLY_BREW, level >= 40 ? 1 : 0);
-            RefreshAura(BLADE_TWISTING1, level >= 35 ? 1 : 0);
-            RefreshAura(QUICK_RECOVERY2, level >= 35 ? 1 : 0);
-            RefreshAura(QUICK_RECOVERY1, level >= 30 && level < 35 ? 1 : 0);
-            RefreshAura(IMPROVED_KIDNEY_SHOT, level >= 30 ? 1 : 0);
-            RefreshAura(GLYPH_BACKSTAB, level >= 10 ? 1 : 0);
-            RefreshAura(SURPRISE_ATTACKS, level >= 10 ? 1 : 0);
-            RefreshAura(ROGUE_VIGOR, level >= 25 ? 2 : level >= 20 ? 1 : 0);
+            //if (level >= 78)
+            //    RefreshAura(ROGUE_ARMOR_ENERGIZE,2);
+            //else if (level >= 60)
+            //    RefreshAura(ROGUE_ARMOR_ENERGIZE);
+            if (level >= 70)
+                RefreshAura(COMBAT_POTENCY5,2);
+            else if (level >= 55)
+                RefreshAura(COMBAT_POTENCY5);
+            else if (level >= 52)
+                RefreshAura(COMBAT_POTENCY4);
+            else if (level >= 49)
+                RefreshAura(COMBAT_POTENCY3);
+            else if (level >= 47)
+                RefreshAura(COMBAT_POTENCY2);
+            else if (level >= 45)
+                RefreshAura(COMBAT_POTENCY1);
+            if (level >= 35)
+                RefreshAura(SEAL_FATE5);
+            else if (level >= 32)
+                RefreshAura(SEAL_FATE4);
+            else if (level >= 29)
+                RefreshAura(SEAL_FATE3);
+            else if (level >= 27)
+                RefreshAura(SEAL_FATE2);
+            else if (level >= 25)
+                RefreshAura(SEAL_FATE1);
+            if (level >= 78)
+                RefreshAura(VITALITY,4);
+            else if (level >= 70)
+                RefreshAura(VITALITY,3);
+            else if (level >= 55)
+                RefreshAura(VITALITY,2);
+            else if (level >= 40)
+                RefreshAura(VITALITY);
+            if (level >= 55)
+                RefreshAura(TURN_THE_TABLES);
+            if (level >= 40)
+                RefreshAura(DEADLY_BREW);
+            if (level >= 35)
+                RefreshAura(BLADE_TWISTING1);//allow rank 1 only
+            if (level >= 35)
+                RefreshAura(QUICK_RECOVERY2);
+            else if (level >= 30)
+                RefreshAura(QUICK_RECOVERY1);
+            if (level >= 30)
+                RefreshAura(IMPROVED_KIDNEY_SHOT);
+            if (level >= 10)
+                RefreshAura(GLYPH_BACKSTAB);
+            if (level >= 10)
+                RefreshAura(SURPRISE_ATTACKS);
+
+            //On 25 get Glyph of Vigor
+            if (level >= 25)
+                RefreshAura(ROGUE_VIGOR,2);
+            else if (level >= 20)
+                RefreshAura(ROGUE_VIGOR);
         }
 
     private:
@@ -833,7 +888,7 @@ public:
   /*Talent*/MUTILATE_1                          = 1329,
   /*Talent*/SHADOWSTEP_1                        = 36554,
             DISMANTLE_1                         = 51722,
-            BLADE_FLURRY_1                      = 13877,
+            BLADE_FLURRY_1                      = 33735,
         //Special
             WOUND_POISON_1                      = 13218,
             MIND_NUMBING_POISON_1               = 5760

@@ -19,7 +19,9 @@
 #ifndef QUERYRESULT_H
 #define QUERYRESULT_H
 
-#include <memory>
+#include "AutoPtr.h"
+#include <ace/Thread_Mutex.h>
+
 #include "Field.h"
 
 #ifdef _WIN32
@@ -58,7 +60,7 @@ class ResultSet
         ResultSet& operator=(ResultSet const& right) = delete;
 };
 
-typedef std::shared_ptr<ResultSet> QueryResult;
+typedef Trinity::AutoPtr<ResultSet, ACE_Thread_Mutex> QueryResult;
 
 class PreparedResultSet
 {
@@ -105,7 +107,7 @@ class PreparedResultSet
         PreparedResultSet& operator=(PreparedResultSet const& right) = delete;
 };
 
-typedef std::shared_ptr<PreparedResultSet> PreparedQueryResult;
+typedef Trinity::AutoPtr<PreparedResultSet, ACE_Thread_Mutex> PreparedQueryResult;
 
 #endif
 

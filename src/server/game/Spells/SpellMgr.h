@@ -21,6 +21,8 @@
 
 // For static or at-server-startup loaded spell data
 
+#include <ace/Singleton.h>
+
 #include "Define.h"
 #include "DBCStructure.h"
 #include "SharedDefines.h"
@@ -601,6 +603,7 @@ bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group);
 
 class SpellMgr
 {
+    friend class ACE_Singleton<SpellMgr, ACE_Null_Mutex>;
     // Constructors
     private:
         SpellMgr();
@@ -608,13 +611,6 @@ class SpellMgr
 
     // Accessors (const or static functions)
     public:
-        static SpellMgr* instance()
-        {
-            static SpellMgr* instance = new SpellMgr();
-
-            return instance;
-        }
-
         // Spell correctness for client using
         static bool IsSpellValid(SpellInfo const* spellInfo, Player* player = NULL, bool msg = true);
 
@@ -659,7 +655,7 @@ class SpellMgr
         // Spell Group Stack Rules table
         bool AddSameEffectStackRuleSpellGroups(SpellInfo const* spellInfo, int32 amount, std::map<SpellGroup, int32>& groups) const;
         SpellGroupStackRule CheckSpellGroupStackRules(SpellInfo const* spellInfo1, SpellInfo const* spellInfo2) const;
-        SpellGroupStackRule GetSpellGroupStackRule(SpellGroup groupid) const;
+		SpellGroupStackRule GetSpellGroupStackRule(SpellGroup groupid) const;
 
         // Spell proc event table
         SpellProcEventEntry const* GetSpellProcEvent(uint32 spellId) const;
@@ -770,6 +766,6 @@ class SpellMgr
         SpellInfoMap               mSpellInfoMap;
 };
 
-#define sSpellMgr SpellMgr::instance()
+#define sSpellMgr ACE_Singleton<SpellMgr, ACE_Null_Mutex>::instance()
 
 #endif

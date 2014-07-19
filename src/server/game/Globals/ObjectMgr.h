@@ -35,6 +35,7 @@
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "ObjectDefines.h"
+#include <ace/Singleton.h>
 #include "VehicleDefines.h"
 #include <string>
 #include <map>
@@ -701,18 +702,13 @@ class PlayerDumpReader;
 class ObjectMgr
 {
     friend class PlayerDumpReader;
+    friend class ACE_Singleton<ObjectMgr, ACE_Null_Mutex>;
 
     private:
         ObjectMgr();
         ~ObjectMgr();
 
     public:
-        static ObjectMgr* instance()
-        {
-            static ObjectMgr* instance = new ObjectMgr();
-            return instance;
-        }
-
         typedef std::unordered_map<uint32, Item*> ItemMap;
 
         typedef std::unordered_map<uint32, Quest*> QuestMap;
@@ -1315,7 +1311,7 @@ class ObjectMgr
         void LoadFactionChangeSpells();
         void LoadFactionChangeTitles();
 
-        bool IsTransportMap(uint32 mapId) const { return _transportMaps.count(mapId) != 0; }
+        bool IsTransportMap(uint32 mapId) const { return _transportMaps.count(mapId); }
 
     private:
         // first free id for selected id type
@@ -1468,6 +1464,6 @@ class ObjectMgr
         std::set<uint32> _transportMaps; // Helper container storing map ids that are for transports only, loaded from gameobject_template
 };
 
-#define sObjectMgr ObjectMgr::instance()
+#define sObjectMgr ACE_Singleton<ObjectMgr, ACE_Null_Mutex>::instance()
 
 #endif

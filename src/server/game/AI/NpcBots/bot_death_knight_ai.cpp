@@ -1,5 +1,4 @@
 #include "bot_ai.h"
-//#include "botmgr.h"
 #include "GameEventMgr.h"
 #include "Group.h"
 #include "Player.h"
@@ -55,7 +54,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature)
     {
-        return bot_minion_ai::OnGossipHello(player, creature, 0);
+        return bot_minion_ai::OnGossipHello(player, creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
@@ -65,23 +64,13 @@ public:
         return true;
     }
 
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code)
-    {
-        if (bot_minion_ai* ai = creature->GetBotMinionAI())
-            return ai->OnGossipSelectCode(player, creature, sender, action, code);
-        return true;
-    }
-
     struct death_knight_botAI : public bot_minion_ai
     {
-        death_knight_botAI(Creature* creature) : bot_minion_ai(creature)
-        {
-            _botclass = BOT_CLASS_DEATH_KNIGHT;
-        }
+        death_knight_botAI(Creature* creature) : bot_minion_ai(creature) { }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_DEATH_KNIGHT) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_DEATH_KNIGHT) != SPELL_CAST_OK)
                 return false;
 
             SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
@@ -300,7 +289,6 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
         }
 
@@ -346,12 +334,12 @@ public:
 
         uint8 GetBotStance() const { return Presence; }
 
-        void EnterCombat(Unit* u) { bot_minion_ai::EnterCombat(u); }
+        void EnterCombat(Unit*) { }
         void Aggro(Unit*) { }
         void AttackStart(Unit*) { }
-        void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
-        void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) { bot_minion_ai::JustDied(u); }
+        void EnterEvadeMode() { }
+        void MoveInLineOfSight(Unit*) { }
+        void JustDied(Unit* u) { bot_ai::JustDied(u); }
         void KilledUnit(Unit*) { }
         void DoNonCombatActions(uint32 diff)
         {
@@ -388,7 +376,7 @@ public:
                         target = master;
             }
 
-            if (!target && IsMeleeClass(_botclass) && GetHealthPCT(me) > 80 &&
+            if (!target && IsMeleeClass(me->GetBotClass()) && GetHealthPCT(me) > 80 &&
                 me->getAttackers().empty() && !CCed(me, true))
             {
                 if (Unit* u = me->GetVictim())
@@ -396,7 +384,7 @@ public:
                         target = me;
             }
 
-            if (!target && !IAmFree())
+            if (!target)
             {
                 Group* gr = master->GetGroup();
                 if (gr)
@@ -425,7 +413,12 @@ public:
             if (target && doCast(target, GetSpell(HYSTERIA_1)))
             {
                 if (target->GetTypeId() == TYPEID_PLAYER)
-                    BotWhisper("Hysteria on You!", target->ToPlayer());
+                {
+                    me->MonsterWhisper("Hysteria on You!", target->ToPlayer());
+                    SetSpellCooldown(HYSTERIA_1, 90000); //1.5 min for player
+                }
+                else
+                    SetSpellCooldown(HYSTERIA_1, 30000); //30 sec for bot
 
                 GC_Timer = 800;
                 return;
@@ -475,6 +468,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(ANTI_MAGIC_SHELL_1)))
                 {
+                    SetSpellCooldown(ANTI_MAGIC_SHELL_1, 30000); //30 sec for bot
                     GC_Timer = temptimer;
                     return;
                 }
@@ -529,6 +523,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(LICHBORNE_1)))
                 {
+                    SetSpellCooldown(LICHBORNE_1, 60000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -540,8 +535,7 @@ public:
         void UpdateAI(uint32 diff)
         {
             ReduceCD(diff);
-            if (!GlobalUpdate(diff))
-                return;
+            if (IAmDead()) return;
             CheckAttackState();
 
             if (me->getPowerType() != POWER_RUNIC_POWER)
@@ -578,7 +572,7 @@ public:
             BreakCC(diff);
             if (CCed(me)) return;
 
-            if (Potion_cd <= diff && GetHealthPCT(me) < 67)
+            if (GetHealthPCT(me) < 67 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, HEALINGPOTION))
@@ -604,6 +598,7 @@ public:
                     temptimer = GC_Timer;
                     if (doCast(me, GetSpell(HORN_OF_WINTER_1)))
                     {
+                        SetSpellCooldown(HORN_OF_WINTER_1, 60000);
                         GC_Timer = temptimer;
                         return;
                     }
@@ -617,6 +612,7 @@ public:
                 {
                     if (doCast(me, GetSpell(BONE_SHIELD_1)))
                     {
+                        SetSpellCooldown(BONE_SHIELD_1, 30000);
                         GC_Timer = 800;
                         return;
                     }
@@ -634,14 +630,17 @@ public:
                 {
                     temptimer = GC_Timer;
                     if (doCast(me, GetSpell(ICEBOUND_FORTITUDE_1)))
+                    {
                         GC_Timer = temptimer;
+                        SetSpellCooldown(ICEBOUND_FORTITUDE_1, 90000);
+                    }
                 }
 
                 CheckAntiMagicShell(diff);
                 CheckHysteria(diff);
             }
 
-            if (!CheckAttackTarget(BOT_CLASS_DEATH_KNIGHT))
+            if (!CheckAttackTarget(CLASS_DEATH_KNIGHT))
                 return;
 
             Attack(diff);
@@ -669,12 +668,14 @@ public:
                     if (doCast(me, GetSpell(EMPOWER_RUNE_WEAPON_1)))
                     {
                         ActivateAllRunes();
+                        SetSpellCooldown(EMPOWER_RUNE_WEAPON_1, 60000);
                         GC_Timer = temptimer;
                     }
                 }
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(RUNE_TAP_1)))
                 {
+                    SetSpellCooldown(RUNE_TAP_1, 20000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -688,12 +689,14 @@ public:
                     if (doCast(me, GetSpell(EMPOWER_RUNE_WEAPON_1)))
                     {
                         ActivateAllRunes();
+                        SetSpellCooldown(EMPOWER_RUNE_WEAPON_1, 60000);
                         GC_Timer = temptimer;
                     }
                 }
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(VAMPIRIC_BLOOD_1)))
                 {
+                    SetSpellCooldown(VAMPIRIC_BLOOD_1, 40000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -709,6 +712,7 @@ public:
             {
                 if (doCast(opponent, GetSpell(MARK_OF_BLOOD_1)))
                 {
+                    SetSpellCooldown(MARK_OF_BLOOD_1, 90000); //1.5 min for bots
                     GC_Timer = 800;
                     return;
                 }
@@ -734,6 +738,7 @@ public:
 
                 if (doCast(opponent, GetSpell(STRANGULATE_1)))
                 {
+                    SetSpellCooldown(STRANGULATE_1, 40000); //-67% for bots
                     GC_Timer = 800;
                     return;
                 }
@@ -748,6 +753,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(DARK_COMMAND_1)))
                 {
+                    SetSpellCooldown(DARK_COMMAND_1, 6000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -755,7 +761,7 @@ public:
             ////DEATH GRIP - DISABLED
             //if (DEATH_GRIP && DeathGrip_cd <= diff && dist < 30 &&
             //    (tank == me && opponent->GetVictim() != me) ||
-            //    (opponent->GetVictim() == me && opponent->ToPlayer() && opponent->IsNonMeleeSpellCast(false)) &&
+            //    (opponent->GetVictim() == me && opponent->ToPlayer() && opponent->IsNonMeleeSpellCasted(false)) &&
             //    Rand() < 75)
             //{
             //    temptimer = GC_Timer;
@@ -795,6 +801,7 @@ public:
             {
                 if (doCast(me, GetSpell(HOWLING_BLAST_1)))
                 {
+                    SetSpellCooldown(HOWLING_BLAST_1, 7000);
                     GC_Timer = 800;
                     return;
                 }
@@ -817,7 +824,10 @@ public:
                 if (Unit* target = FindAOETarget(30, true))
                 {
                     if (doCast(target, GetSpell(DEATH_AND_DECAY_1)))
+                    {
+                        SetSpellCooldown(DEATH_AND_DECAY_1, 15000); //improved by Morbidity
                         return;
+                    }
                 }
 
                 SetSpellCooldown(DEATH_AND_DECAY_1, 500); //fail
@@ -853,6 +863,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(MIND_FREEZE_1)))
                 {
+                    SetSpellCooldown(MIND_FREEZE_1, 8000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -865,7 +876,10 @@ public:
                 if (targets.size() >= 3)
                 {
                     if (doCast(me, GetSpell(HUNGERING_COLD_1)))
+                    {
+                        SetSpellCooldown(HUNGERING_COLD_1, 45000);
                         return;
+                    }
                 }
 
                 SetSpellCooldown(HUNGERING_COLD_1, 500); //fail
@@ -881,6 +895,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(RUNE_STRIKE_1)))
                 {
+                    SetSpellCooldown(RUNE_STRIKE_1, me->getAttackTimer(BASE_ATTACK)); //only one per swing
                     runestriketimer = 0; //do not remove aura, just disable ability
                     GC_Timer = temptimer;
                 }
@@ -937,8 +952,6 @@ public:
                     return;
             }
         }
-
-        void ApplyClassDamageMultiplierMelee(uint32& /*damage*/, CalcDamageInfo& /*damageinfo*/) const {}
 
         void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool& crit) const
         {
@@ -1305,7 +1318,7 @@ public:
         
         void CheckBattleRez(uint32 diff)
         {
-            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
 
             Group* gr = master->GetGroup();
             if (!gr)
@@ -1327,7 +1340,7 @@ public:
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                    BotWhisper("Rezzing You", master);
+					me->MonsterWhisper("Rezzing You", master);
 
                 return;
             }
@@ -1352,7 +1365,7 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    BotWhisper("Rezzing You", tPlayer);
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
@@ -1371,15 +1384,23 @@ public:
                     int32 bp0 = int32(damage / 25); //4%
                     me->CastCustomSpell(me, BLOOD_PRESENCE_HEAL_EFFECT, &bp0, NULL, NULL, true);
                 }
-            }
 
-            bot_ai::DamageDealt(victim, damage, damageType);
+                for (uint8 i = 0; i != MAX_BOT_CTC_SPELLS; ++i)
+                {
+                    if (_ctc[i].first && !_ctc[i].second)
+                    {
+                        if (urand(1,100) <= CalcCTC(_ctc[i].first))
+                            _ctc[i].second = 1000;
+
+                        if (_ctc[i].second > 0)
+                            me->CastSpell(victim, _ctc[i].first, true);
+                    }
+                }
+            }
         }
 
         void DamageTaken(Unit* u, uint32& /*damage*/)
         {
-            if (!u->IsInCombat() && !me->IsInCombat())
-                return;
             OnOwnerDamagedBy(u);
         }
 
@@ -1403,12 +1424,20 @@ public:
             me->setPowerType(POWER_RUNIC_POWER);
             me->SetMaxPower(POWER_RUNIC_POWER, me->GetCreatePowers(POWER_RUNIC_POWER));
 
-            DefaultInit();
-            InitRunes();
+            if (master)
+            {
+                SetStats(true);
+                InitRoles();
+                InitPowers();
+                InitRunes();
+                ApplyPassives(CLASS_DEATH_KNIGHT);
+            }
         }
 
         void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
             RuneTimers(diff);
 
             if (presencetimer > diff)               presencetimer -= diff;
@@ -1421,6 +1450,9 @@ public:
             else                                    pestilencetimer = 0;
         }
 
+        bool CanRespawn()
+        {return false;}
+
         void InitPowers()
         {
             if (master->getLevel() >= 70)
@@ -1428,10 +1460,7 @@ public:
             else if (master->getLevel() >= 58)
                 RefreshAura(RUNIC_POWER_MASTERY,4);
             else
-            {
-                RefreshAura(RUNIC_POWER_MASTERY,0);
                 me->SetMaxPower(POWER_RUNIC_POWER, me->GetCreatePowers(POWER_RUNIC_POWER));
-            }
 
             if (runicpower)
                 me->SetPower(POWER_RUNIC_POWER, runicpower);
@@ -1479,49 +1508,96 @@ public:
             //InitSpellMap(UNHOLY_PRESENCE_1, true);
 
   /*Custom*/BLOOD_STRIKE = lvl >= 65 ? GetSpell(HEART_STRIKE_1) : InitSpell(me, BLOOD_STRIKE_1);
-            InitSpellMap(BLOOD_STRIKE);
         }
 
         void ApplyClassPassives()
         {
             uint8 level = master->getLevel();
 
-            RefreshAura(GLYPH_OF_CHAINS_OF_ICE, level >= 58 ? 1 : 0);
-            RefreshAura(CHAINS_OF_ICE_FROST_RUNE_REFRESH, level >= 80 ? 4 : level >= 77 ? 3 : level >= 68 ? 2 : level >= 58 ? 1 : 0);
-            RefreshAura(GLYPH_OF_HEART_STRIKE, level >= 65 ? 1 : 0);
-            RefreshAura(GLYPH_OF_RUNE_TAP, level >= 68 ? 2 : level >= 60 ? 1 : 0);
-            RefreshAura(GLYPH_OF_HOWLING_BLAST, level >= 63 ? 1 : 0);
-            RefreshAura(BUTCHERY, level >= 57 ? 1 : 0);
-            RefreshAura(SCENT_OF_BLOOD, level >= 58 ? 1 : 0);
-            RefreshAura(VENDETTA, level >= 59 ? 1 : 0);
-            RefreshAura(BLOODY_VENGEANCE3, level >= 65 ? 1 : 0);
-            RefreshAura(BLOODY_VENGEANCE2, level >= 60 && level < 65 ? 1 : 0);
-            RefreshAura(BLOODY_VENGEANCE1, level >= 57 && level < 60 ? 1 : 0);
-            RefreshAura(ABOMINATIONS_MIGHT, level >= 60 ? 1 : 0);
-            RefreshAura(IMPROVED_BLOOD_PRESENCE, level >= 67 ? 1 : 0);
-            RefreshAura(BLOODWORMS, level >= 65 ? 2 : 0);
-            //RefreshAura(IMPROVED_DEATH_STRIKE, level >= 66 ? 1 : 0);
-            RefreshAura(TOUGHNESS, level >= 57 ? 1 : 0);
-            RefreshAura(ANNIHILATION, level >= 57 ? 1 : 0);
-            RefreshAura(ICY_TALONS, level >= 60 ? 1 : 0);
-            RefreshAura(CHILL_OF_THE_GRAVE, level >= 68 ? 2 : level >= 58 ? 1 : 0);
-            RefreshAura(IMPROVED_ICY_TALONS, level >= 64 ? 1 : 0);
-            RefreshAura(CHILBLAINS, level >= 68 ? 1 : 0);
-            RefreshAura(ACCLIMATION, level >= 69 ? 1 : 0);
-            RefreshAura(NECROSIS5, level >= 63 ? 1 : 0);
-            RefreshAura(NECROSIS4, level >= 62 && level < 63 ? 1 : 0);
-            RefreshAura(NECROSIS3, level >= 61 && level < 62 ? 1 : 0);
-            RefreshAura(NECROSIS2, level >= 60 && level < 61 ? 1 : 0);
-            RefreshAura(NECROSIS1, level >= 59 && level < 60 ? 1 : 0);
-            RefreshAura(BLOOD_CAKED_BLADE3, level >= 65 ? 1 : 0);
-            RefreshAura(BLOOD_CAKED_BLADE2, level >= 62 && level < 65 ? 1 : 0);
-            RefreshAura(BLOOD_CAKED_BLADE1, level >= 60 && level < 62 ? 1 : 0);
-            RefreshAura(DIRGE, level >= 67 ? 2 : level >= 61 ? 1 : 0);
-            RefreshAura(UNHOLY_BLIGHT, level >= 61 ? 1 : 0);
-            RefreshAura(DESECRATION, level >= 62 ? 1 : 0);
-            RefreshAura(CRYPT_FEVER, level >= 64 ? 1 : 0);
-            RefreshAura(EBON_PLAGUEBRINGER, level >= 68 ? 1 : 0);
-            RefreshAura(WANDERING_PLAGUE, level >= 67 ? 1 : 0);
+            if (level >= 58)
+                RefreshAura(GLYPH_OF_CHAINS_OF_ICE);
+            if (level >= 80)
+                RefreshAura(CHAINS_OF_ICE_FROST_RUNE_REFRESH,4);
+            else if (level >= 77)
+                RefreshAura(CHAINS_OF_ICE_FROST_RUNE_REFRESH,3);
+            else if (level >= 68)
+                RefreshAura(CHAINS_OF_ICE_FROST_RUNE_REFRESH,2);
+            else if (level >= 58)
+                RefreshAura(CHAINS_OF_ICE_FROST_RUNE_REFRESH);
+            if (level >= 65)
+                RefreshAura(GLYPH_OF_HEART_STRIKE);
+            if (level >= 68)
+                RefreshAura(GLYPH_OF_RUNE_TAP,2);
+            else if (level >= 60)
+                RefreshAura(GLYPH_OF_RUNE_TAP);
+            if (level >= 63)
+                RefreshAura(GLYPH_OF_HOWLING_BLAST);
+            if (level >= 57)
+                RefreshAura(BUTCHERY);
+            if (level >= 58)
+                RefreshAura(SCENT_OF_BLOOD);
+            if (level >= 59)
+                RefreshAura(VENDETTA);
+            if (level >= 65)
+                RefreshAura(BLOODY_VENGEANCE3);
+            else if (level >= 60)
+                RefreshAura(BLOODY_VENGEANCE2);
+            else if (level >= 57)
+                RefreshAura(BLOODY_VENGEANCE1);
+            if (level >= 60)
+                RefreshAura(ABOMINATIONS_MIGHT);
+            if (level >= 67)
+                RefreshAura(IMPROVED_BLOOD_PRESENCE);
+            if (level >= 65)
+                RefreshAura(BLOODWORMS,2);
+            //if (level >= 66)
+            //    RefreshAura(IMPROVED_DEATH_STRIKE);
+            if (level >= 57)
+                RefreshAura(TOUGHNESS);
+            if (level >= 57)
+                RefreshAura(ANNIHILATION);
+            if (level >= 60)
+                RefreshAura(ICY_TALONS);
+            if (level >= 68)
+                RefreshAura(CHILL_OF_THE_GRAVE,2);
+            else if (level >= 58)
+                RefreshAura(CHILL_OF_THE_GRAVE);
+            if (level >= 64)
+                RefreshAura(IMPROVED_ICY_TALONS);
+            if (level >= 68)
+                RefreshAura(CHILBLAINS);
+            if (level >= 69)
+                RefreshAura(ACCLIMATION);
+            if (level >= 63)
+                RefreshAura(NECROSIS5);
+            else if (level >= 62)
+                RefreshAura(NECROSIS4);
+            else if (level >= 61)
+                RefreshAura(NECROSIS3);
+            else if (level >= 60)
+                RefreshAura(NECROSIS2);
+            else if (level >= 59)
+                RefreshAura(NECROSIS1);
+            if (level >= 65)
+                RefreshAura(BLOOD_CAKED_BLADE3);
+            else if (level >= 62)
+                RefreshAura(BLOOD_CAKED_BLADE2);
+            else if (level >= 60)
+                RefreshAura(BLOOD_CAKED_BLADE1);
+            if (level >= 67)
+                RefreshAura(DIRGE,2);
+            else if (level >= 61)
+                RefreshAura(DIRGE);
+            if (level >= 61)
+                RefreshAura(UNHOLY_BLIGHT);
+            if (level >= 62)
+                RefreshAura(DESECRATION);
+            if (level >= 64)
+                RefreshAura(CRYPT_FEVER);
+            if (level >= 68)
+                RefreshAura(EBON_PLAGUEBRINGER);
+            if (level >= 67)
+                RefreshAura(WANDERING_PLAGUE);
 
             RefreshAura(FROST_FEVER);
             RefreshAura(BLOOD_PLAGUE);
@@ -1622,8 +1698,8 @@ public:
             NECROSIS4                           = 51464,
             NECROSIS5                           = 51465,
             BLOOD_CAKED_BLADE1                  = 49219,
-            BLOOD_CAKED_BLADE2                  = 49627,
-            BLOOD_CAKED_BLADE3                  = 49628,
+            BLOOD_CAKED_BLADE2                  = 49227,
+            BLOOD_CAKED_BLADE3                  = 49228,
             DIRGE                               = 51206,//rank 2
             UNHOLY_BLIGHT                       = 49194,
             DESECRATION                         = 55667,//rank 2

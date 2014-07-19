@@ -2749,7 +2749,7 @@ bool Guild::_DoItemsMove(MoveItemData* pSrc, MoveItemData* pDest, bool sendError
     Item* pDestItem = pDest->GetItem();
     bool swap = (pDestItem != NULL);
 
-    Item* pSrcItem = pSrc->GetItem(splitedAmount != 0);
+    Item* pSrcItem = pSrc->GetItem(splitedAmount);
     // 1. Can store source item in destination
     if (!pDest->CanStore(pSrcItem, swap, sendError))
         return false;

@@ -39,6 +39,9 @@
 #include "SpellInfo.h"
 #include "LuaEngine.h"
 
+//Bot
+#include "bothelper.h"
+
 enum StableResultCode
 {
     STABLE_ERR_MONEY        = 0x01,                         // "you don't have enough money"
@@ -303,6 +306,36 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)
 
     uint64 guid;
     recvData >> guid;
+
+    //Bot
+    if (guid == _player->GetGUID())
+    {
+        if (!_player->GetBotHelper())
+        {
+            TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) do not have a helper on gossip hello.", uint32(GUID_LOPART(guid)));
+            return;
+        }
+        _player->GetBotHelper()->OnGossipHello(_player);
+        return;
+    }
+    else if (IS_CREATURE_GUID(guid))
+    {
+        if (Creature* qBot = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid))
+        {
+            if (qBot->IsQuestBot() &&
+                (_player->IsAlive() || qBot->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_GHOST) &&
+                (qBot->IsAlive() || (qBot->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_DEAD_INTERACT)))
+            {
+                if (!sScriptMgr->OnGossipHello(_player, qBot))
+                {
+                    TC_LOG_ERROR("network", "WORLD: HandleGossipHelloOpcode - qBot %s (Entry: %u) returned false on gossip hello.",
+                        qBot->GetName().c_str(), qBot->GetEntry());
+                }
+                return;
+            }
+        }
+    }
+    //end Bot
 
     Creature* unit = GetPlayer()->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_NONE);
     if (!unit)
@@ -889,12 +922,12 @@ void WorldSession::HandleRepairItemOpcode(WorldPacket& recvData)
 
         Item* item = _player->GetItemByGuid(itemGUID);
         if (item)
-            _player->DurabilityRepair(item->GetPos(), true, discountMod, guildBank != 0);
+            _player->DurabilityRepair(item->GetPos(), true, discountMod, guildBank);
     }
     else
     {
         TC_LOG_DEBUG("network", "ITEM: Repair all items, npcGUID = %u", GUID_LOPART(npcGUID));
-        _player->DurabilityRepairAll(true, discountMod, guildBank != 0);
+        _player->DurabilityRepairAll(true, discountMod, guildBank);
     }
 }
 

@@ -684,7 +684,7 @@ struct ItemTemplate
         return false;
     }
 
-    bool IsCurrencyToken() const { return (BagFamily & BAG_FAMILY_MASK_CURRENCY_TOKENS) != 0; }
+    bool IsCurrencyToken() const { return BagFamily & BAG_FAMILY_MASK_CURRENCY_TOKENS; }
 
     uint32 GetMaxStackSize() const
     {

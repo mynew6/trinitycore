@@ -26,7 +26,7 @@ class WorldDatabaseConnection : public MySQLConnection
     public:
         //- Constructors for sync and async connections
         WorldDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo) { }
-        WorldDatabaseConnection(ProducerConsumerQueue<SQLOperation*>* q, MySQLConnectionInfo& connInfo) : MySQLConnection(q, connInfo) { }
+        WorldDatabaseConnection(ACE_Activation_Queue* q, MySQLConnectionInfo& connInfo) : MySQLConnection(q, connInfo) { }
 
         //- Loads database type specific prepared statements
         void DoPrepareStatements();
@@ -113,9 +113,8 @@ enum WorldDatabaseStatements
     WORLD_SEL_REQ_XP,
 
     // Bot
-    WORLD_SEL_NPCBOT_INFO,
+    WORLD_SEL_NPCBOT_TEMPLATE,
     WORLD_SEL_NPCBOT_PET_LEVELSTATS,
-    WORLD_UPD_NPCBOT_POSITION,
 
     MAX_WORLDDATABASE_STATEMENTS
 };

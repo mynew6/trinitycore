@@ -1396,16 +1396,10 @@ typedef std::unordered_map<uint32, ObjectGuidList*> ObjectListMap;
 
 class SmartWaypointMgr
 {
-    private:
-        SmartWaypointMgr() { }
-        ~SmartWaypointMgr();
-
+    friend class ACE_Singleton<SmartWaypointMgr, ACE_Null_Mutex>;
+    SmartWaypointMgr() { }
     public:
-        static SmartWaypointMgr* instance()
-        {
-            static SmartWaypointMgr* instance = new SmartWaypointMgr();
-            return instance;
-        }
+        ~SmartWaypointMgr();
 
         void LoadFromDB();
 
@@ -1432,16 +1426,10 @@ typedef std::pair<CacheSpellContainer::const_iterator, CacheSpellContainer::cons
 
 class SmartAIMgr
 {
-    private:
-        SmartAIMgr() { }
-        ~SmartAIMgr() { }
-
+    friend class ACE_Singleton<SmartAIMgr, ACE_Null_Mutex>;
+    SmartAIMgr() { }
     public:
-        static SmartAIMgr* instance()
-        {
-            static SmartAIMgr* instance = new SmartAIMgr();
-            return instance;
-        }
+        ~SmartAIMgr() { }
 
         void LoadSmartAIFromDB();
 
@@ -1610,6 +1598,6 @@ class SmartAIMgr
         CacheSpellContainer KillCreditSpellStore;
 };
 
-#define sSmartScriptMgr SmartAIMgr::instance()
-#define sSmartWaypointMgr SmartWaypointMgr::instance()
+#define sSmartScriptMgr ACE_Singleton<SmartAIMgr, ACE_Null_Mutex>::instance()
+#define sSmartWaypointMgr ACE_Singleton<SmartWaypointMgr, ACE_Null_Mutex>::instance()
 #endif

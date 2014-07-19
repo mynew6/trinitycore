@@ -1,10 +1,9 @@
 #include "bot_ai.h"
-#include "botmgr.h"
 #include "Group.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
-//#include "WorldSession.h"
+#include "WorldSession.h"
 /*
 Paladin NpcBot (reworked by Graff onlysuffering@gmail.com)
 Complete - Around 45-50%
@@ -22,7 +21,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature)
     {
-        return bot_minion_ai::OnGossipHello(player, creature, 0);
+        return bot_minion_ai::OnGossipHello(player, creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
@@ -32,30 +31,20 @@ public:
         return true;
     }
 
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code)
-    {
-        if (bot_minion_ai* ai = creature->GetBotMinionAI())
-            return ai->OnGossipSelectCode(player, creature, sender, action, code);
-        return true;
-    }
-
     struct paladin_botAI : public bot_minion_ai
     {
-        paladin_botAI(Creature* creature) : bot_minion_ai(creature)
-        {
-            _botclass = BOT_CLASS_PALADIN;
-        }
+        paladin_botAI(Creature* creature) : bot_minion_ai(creature) { }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_PALADIN) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_PALADIN) != SPELL_CAST_OK)
                 return false;
             return bot_ai::doCast(victim, spellId, triggered);
         }
 
         void HOFGroup(Player* pTarget, uint32 diff)
         {
-            if (!IsSpellReady(HOF_1, diff) || IAmFree() || IsCasting() || Rand() > 60)
+            if (!IsSpellReady(HOF_1, diff) || IsCasting() || Rand() > 60)
                 return;
 
             if (Group* pGroup = pTarget->GetGroup())
@@ -71,10 +60,9 @@ public:
                 {
                     Player* tPlayer = itr->GetSource();
                     if (!tPlayer || !tPlayer->HaveBot()) continue;
-                    BotMap const* map = tPlayer->GetBotMgr()->GetBotMap();
-                    for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
+                    for (uint8 i = 0; i != tPlayer->GetMaxNpcBots(); ++i)
                     {
-                        Creature* cre = it->second;
+                        Creature* cre = tPlayer->GetBotMap(i)->_Cre();
                         if (!cre || !cre->IsInWorld()) continue;
                         if (HOFTarget(cre, diff))
                             return;
@@ -101,11 +89,16 @@ public:
                     if (app->IsPositive()) continue;
                 SpellInfo const* spellInfo = aura->GetSpellInfo();
                 if (spellInfo->AttributesEx & SPELL_ATTR0_HIDDEN_CLIENTSIDE) continue;
-                //if (spellInfo->AttributesEx & SPELL_ATTR1_DONT_DISPLAY_IN_AURA_BAR) continue;
                 if (me->getLevel() >= 40 && (spellInfo->GetAllEffectsMechanicMask() & (1<<MECHANIC_STUN)))
                 {
                     if (doCast(target, GetSpell(HOF_1)))
+                    {
+                        if (target->ToCreature())
+                            SetSpellCooldown(HOF_1, 10000); //10 sec for selfcast after stun
+                        else
+                            SetSpellCooldown(HOF_1, 15000); //improved
                         return true;
+                    }
                 }
        /*else */if (spellInfo->GetAllEffectsMechanicMask() & (1<<MECHANIC_SNARE) ||
                     spellInfo->GetAllEffectsMechanicMask() & (1<<MECHANIC_ROOT))
@@ -117,7 +110,16 @@ public:
                         spellInfo->Dispel == DISPEL_POISON) ? GetSpell(CLEANSE_1) : GetSpell(HOF_1);
 
                     if (doCast(target, spell))
+                    {
+                        if (spell == GetSpell(HOF_1))
+                        {
+                            if (target->ToCreature())
+                                SetSpellCooldown(HOF_1, 5000); //5 sec for bots
+                            else
+                                SetSpellCooldown(HOF_1, 15000); //improved
+                        }
                         return true;
+                    }
                 }
             }
             return false;
@@ -125,7 +127,7 @@ public:
 
         void HOSGroup(Player* hTarget, uint32 diff)
         {
-            if (!IsSpellReady(HOS_1, diff) || IAmFree() || IsCasting() || Rand() > 30)
+            if (!IsSpellReady(HOS_1, diff) || IsCasting() || Rand() > 30)
                 return;
 
             if (Group* pGroup = hTarget->GetGroup())
@@ -151,7 +153,7 @@ public:
                         if (!(*iter)->CanHaveThreatList()) continue;
                         threat = (*iter)->getThreatManager().getThreat(HOSPlayer);
                         if (threat < 25.f) continue;//too small threat
-                        if ((*iter)->getAttackers().size() < 2) continue;//would be useless
+                        //if ((*iter)->getThreatManager().getThreat(tank) < threat * 0.33f) continue;//would be useless
                         if (HOSPlayer->GetDistance((*iter)) > 10) continue;
                         if (HOSTarget(HOSPlayer, diff))
                             return;
@@ -165,10 +167,9 @@ public:
                     if (!pl->HaveBot()) continue;
                     if (master->GetMap() != pl->FindMap()) continue;
                     if (!pl->IsInWorld() || pl->IsBeingTeleported()) continue;
-                    BotMap const* map = pl->GetBotMgr()->GetBotMap();
-                    for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
+                    for (uint8 i = 0; i != pl->GetMaxNpcBots(); ++i)
                     {
-                        Creature* cre = it->second;
+                        Creature* cre = pl->GetBotMap(i)->_Cre();
                         if (!cre || cre->isDead()) continue;
                         if (IsTank(cre)) continue;
                         if (me->GetExactDist(cre) > 30) continue;
@@ -182,7 +183,7 @@ public:
                             if (!(*iter)->CanHaveThreatList()) continue;
                             threat = (*iter)->getThreatManager().getThreat(cre);
                             if (threat < 25.f) continue;//too small threat
-                            if ((*iter)->getAttackers().size() < 2) continue;//would be useless
+                            //if ((*iter)->getThreatManager().getThreat(tank) < threat * 0.33f) continue;//would be useless
                             if (cre->GetDistance((*iter)) > 10) continue;
                             if (HOSTarget(cre, diff))
                                 return;
@@ -212,7 +213,7 @@ public:
                 if (!(*iter)->CanHaveThreatList()) continue;
                 threat = (*iter)->getThreatManager().getThreat(target);
                 if (threat < 25.f) continue; //too small threat
-                if ((*iter)->getAttackers().size() < 2) continue;//would be useless
+                //if ((*iter)->getThreatManager().getThreat(tank) < threat * 0.33f) continue;//would be useless
                 if (target->GetDistance((*iter)) <= 10)
                     Tattackers++;
             }
@@ -221,6 +222,7 @@ public:
                 for (AttackerSet::iterator iter = h_attackers.begin(); iter != h_attackers.end(); ++iter)
                     if ((*iter)->getThreatManager().getThreat(target) > 0.f)
                         (*iter)->getThreatManager().modifyThreatPercent(target, -(30 + 50*(target->HasAura(586)))); //Fade
+                SetSpellCooldown(HOS_1, target->ToCreature() ? 10000 : 25000);
                 return true;
             }
             return false;
@@ -237,8 +239,8 @@ public:
 
             if (doCast(target, GetSpell(HOLY_SHOCK_1)))
             {
-                if (urand(1,100) <= 20) //Daybreak: 20% to not trigger HS CD, only GCD
-                    ResetSpellCooldown(HOLY_SHOCK_1);
+                if (urand(1,100) > 20) //Daybreak: 20% to not trigger HS CD, only GCD
+                    SetSpellCooldown(HOLY_SHOCK_1, 5000);
                 return true;
             }
             return false;
@@ -254,7 +256,7 @@ public:
             if (me->GetExactDist(target) > 35) return false;
             if (IsCasting()) return false;
             if (IsSpellReady(HAND_OF_PROTECTION_1, diff, false) && target->GetTypeId() == TYPEID_PLAYER &&
-                IsInBotParty(target) &&
+                ((master->GetGroup() && master->GetGroup()->IsMember(target->GetGUID())) || target == master) &&
                 ((hp < 30 && !target->getAttackers().empty()) || (hp < 50 && target->getAttackers().size() > 3)) &&
                 me->GetExactDist(target) < 30 &&
                 !HasAuraName(target, HAND_OF_PROTECTION_1) &&
@@ -262,7 +264,8 @@ public:
             {
                 if (doCast(target, GetSpell(HAND_OF_PROTECTION_1)))
                 {
-                    BotWhisper("BOP on you!", target->ToPlayer());
+                    me->MonsterWhisper("BOP on you!", target->ToPlayer());
+                    SetSpellCooldown(HAND_OF_PROTECTION_1, 60000); //1 min
 
                     //debug
                     if (!HasAuraName(target, FORBEARANCE_AURA))
@@ -285,7 +288,8 @@ public:
                         {
                             if (doCast(target, GetSpell(LAY_ON_HANDS_1)))
                             {
-                                BotWhisper("Lay of Hands on you!", target->ToPlayer());
+                                me->MonsterWhisper("Lay of Hands on you!", target->ToPlayer());
+                                SetSpellCooldown(LAY_ON_HANDS_1, 150000); //2.5 min
                                 return true;
                             }
                         }
@@ -301,14 +305,18 @@ public:
             }
 
             Unit* u = target->GetVictim();
-            if (IsSpellReady(SACRED_SHIELD_1, diff) && !IAmFree() && target->GetTypeId() == TYPEID_PLAYER &&
+            if (IsSpellReady(SACRED_SHIELD_1, diff) && target->GetTypeId() == TYPEID_PLAYER &&
                 (hp < 65 || target->getAttackers().size() > 1 || (u && u->GetMaxHealth() > target->GetMaxHealth()*10 && target->IsInCombat())) &&
-                !HasAuraName(target, SACRED_SHIELD_1) && IsInBotParty(target))
+                !HasAuraName(target, SACRED_SHIELD_1) &&
+                ((master->GetGroup() && master->GetGroup()->IsMember(target->GetGUID())) || target == master))
             {
                 Unit* aff = FindAffectedTarget(GetSpell(SACRED_SHIELD_1), me->GetGUID(), 50, 1);//use players since we cast only on them
                 if ((!aff || (aff->getAttackers().empty() && !IsTank(aff))) &&
                     doCast(target, GetSpell(SACRED_SHIELD_1)))
+                {
+                    SetSpellCooldown(SACRED_SHIELD_1, 3000);
                     return true;
+                }
             }
             if ((hp < 85 || GetLostHP(target) > 6000))
                 if (HS(target, diff))
@@ -327,23 +335,21 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
         }
 
-        void EnterCombat(Unit* u) { bot_minion_ai::EnterCombat(u); }
+        void EnterCombat(Unit*) { }
         void Aggro(Unit*) { }
         void AttackStart(Unit*) { }
         void KilledUnit(Unit*) { }
-        void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
-        void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) { bot_minion_ai::JustDied(u); }
+        void EnterEvadeMode() { }
+        void MoveInLineOfSight(Unit*) { }
+        void JustDied(Unit* u) { bot_ai::JustDied(u); }
 
         void UpdateAI(uint32 diff)
         {
             ReduceCD(diff);
-            if (!GlobalUpdate(diff))
-                return;
+            if (IAmDead()) return;
             CheckAttackState();
             CheckAuras();
             if (wait == 0)
@@ -354,7 +360,7 @@ public:
             //HOFTarget(me, diff);//self stun cure goes FIRST
             if (CCed(me)) return;
 
-            if (Potion_cd <= diff && GetManaPCT(me) < 30)
+            if (GetManaPCT(me) < 30 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, MANAPOTION))
@@ -365,18 +371,18 @@ public:
             }
             if (GetManaPCT(me) < 40 && IsSpellReady(DIVINE_PLEA_1, diff, false))
                 if (doCast(me, GetSpell(DIVINE_PLEA_1)))
-                    return;
+                    SetSpellCooldown(DIVINE_PLEA_1, 45000);
 
             CureTarget(me, GetSpell(CLEANSE_1), diff); //maybe unnecessary but this goes FIRST
             HOFTarget(master, diff); //maybe unnecessary
-            CureTarget(master, GetSpell(CLEANSE_1), diff); //maybe unnecessary
+            CureTarget(master,  GetSpell(CLEANSE_1), diff); //maybe unnecessary
             BuffAndHealGroup(master, diff);
             HOSTarget(master, diff);
-            CureGroup(master, GetSpell(CLEANSE_1), diff);
+            CureGroup(master,  GetSpell(CLEANSE_1), diff);
             HOFGroup(master, diff);
             HOSGroup(master, diff);
 
-            if (Potion_cd <= diff && GetHealthPCT(me) < 67)
+            if (GetHealthPCT(me) < 50 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, HEALINGPOTION))
@@ -399,7 +405,7 @@ public:
             if (GetHealthPCT(me) < 80)
                 HealTarget(me, GetHealthPCT(me), diff);
 
-            if (!CheckAttackTarget(BOT_CLASS_PALADIN))
+            if (!CheckAttackTarget(CLASS_PALADIN))
                 return;
 
             Repentance(diff);
@@ -409,7 +415,7 @@ public:
 
         void DoNonCombatActions(uint32 diff)
         {
-            if (GC_Timer > diff || me->IsMounted() || IsCasting())
+            if (GC_Timer > diff || me->IsMounted())
                 return;
 
             RezGroup(GetSpell(REBIRTH_1), master);
@@ -423,13 +429,11 @@ public:
                 uint8 myAura;
                 uint32 DEVOTION_AURA = GetSpell(DEVOTION_AURA_1);
                 uint32 CONCENTRATION_AURA = GetSpell(CONCENTRATION_AURA_1);
-
                 if (me->HasAura(DEVOTION_AURA, me->GetGUID()))
                     myAura = DEVOTIONAURA;
                 else if (me->HasAura(CONCENTRATION_AURA, me->GetGUID()))
                     myAura = CONCENTRATIONAURA;
-                else
-                    myAura = NOAURA;
+                else myAura = NOAURA;
 
                 if (myAura != NOAURA)
                     return; //do not bother
@@ -440,10 +444,10 @@ public:
                 if (devAura && devAura->GetCasterGUID() == me->GetGUID()) return;
                 if (concAura && concAura->GetCasterGUID() == me->GetGUID()) return;
 
-                if ((master->getClass() == BOT_CLASS_MAGE ||
-                    master->getClass() == BOT_CLASS_PRIEST ||
-                    master->getClass() == BOT_CLASS_WARLOCK ||
-                    master->getClass() == BOT_CLASS_DRUID || devAura) &&
+                if ((master->getClass() == CLASS_MAGE ||
+                    master->getClass() == CLASS_PRIEST ||
+                    master->getClass() == CLASS_WARLOCK ||
+                    master->getClass() == CLASS_DRUID || devAura) &&
                     !concAura &&
                     doCast(me, CONCENTRATION_AURA))
                 {
@@ -463,63 +467,48 @@ public:
             if (!target || target->isDead() || GC_Timer > diff || Rand() > 30) return false;
             if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
             if (me->GetExactDist(target) > 30) return false;
-            //if (HasAuraName(target, BLESSING_OF_WISDOM_1, me->GetGUID()) ||
-            //    HasAuraName(target, BLESSING_OF_KINGS_1, me->GetGUID()) ||
-            //    HasAuraName(target, BLESSING_OF_SANCTUARY_1, me->GetGUID()) ||
-            //    HasAuraName(target, BLESSING_OF_MIGHT_1, me->GetGUID()))
-            //    return false;
+            if (HasAuraName(target, BLESSING_OF_WISDOM_1, me->GetGUID()) ||
+                HasAuraName(target, BLESSING_OF_KINGS_1, me->GetGUID()) ||
+                HasAuraName(target, BLESSING_OF_SANCTUARY_1, me->GetGUID()) ||
+                HasAuraName(target, BLESSING_OF_MIGHT_1, me->GetGUID()))
+                return false;
             //if (HasAuraName(target, "Greater Blessing of Wisdom", me->GetGUID()) ||
             //    HasAuraName(target, "Greater Blessing of Might", me->GetGUID()) ||
             //    HasAuraName(target, "Greater Blessing of Kings", me->GetGUID()) ||
             //    HasAuraName(target, "Greater Blessing of Sanctuary", me->GetGUID()))
             //    return false;
 
-            uint32 mask = GetBlessingsMask(target);
-
-            //already has my blessing
-            if (mask & SPECIFIC_BLESSING_MY_BLESSING)
-                return false;
-
             uint32 BLESSING_OF_WISDOM = GetSpell(BLESSING_OF_WISDOM_1);
             uint32 BLESSING_OF_KINGS = GetSpell(BLESSING_OF_KINGS_1);
             uint32 BLESSING_OF_SANCTUARY = GetSpell(BLESSING_OF_SANCTUARY_1);
             uint32 BLESSING_OF_MIGHT = GetSpell(BLESSING_OF_MIGHT_1);
-
-            bool wisdom = (mask & SPECIFIC_BLESSING_WISDOM);
-            bool kings = (mask & SPECIFIC_BLESSING_KINGS);
-            bool sanctuary = (mask & SPECIFIC_BLESSING_SANCTUARY);
-            bool might = (mask & SPECIFIC_BLESSING_MIGHT);
-
-            //bool wisdom = HasAuraName(target, BLESSING_OF_WISDOM_1) || HasAuraName(target, GREATER_BLESSING_OF_WISDOM_1);
-            //bool kings = HasAuraName(target, BLESSING_OF_KINGS_1) || HasAuraName(target, GREATER_BLESSING_OF_KINGS_1);
-            //bool sanctuary = HasAuraName(target, BLESSING_OF_SANCTUARY_1) || HasAuraName(target, GREATER_BLESSING_OF_SANCTUARY_1);
-            //bool might = (HasAuraName(target, BLESSING_OF_MIGHT_1) || HasAuraName(target, GREATER_BLESSING_OF_MIGHT_1) || HasAuraName(target, BATTLESHOUT_1));
+            bool wisdom = HasAuraName(target, BLESSING_OF_WISDOM_1) || HasAuraName(target, GREATER_BLESSING_OF_WISDOM_1);
+            bool kings = HasAuraName(target, BLESSING_OF_KINGS_1) || HasAuraName(target, GREATER_BLESSING_OF_KINGS_1);
+            bool sanctuary = HasAuraName(target, BLESSING_OF_SANCTUARY_1) || HasAuraName(target, GREATER_BLESSING_OF_SANCTUARY_1);
+            bool might = (HasAuraName(target, BLESSING_OF_MIGHT_1) || HasAuraName(target, GREATER_BLESSING_OF_MIGHT_1) || HasAuraName(target, BATTLESHOUT_1));
 
             uint8 Class = 0;
             if (target->GetTypeId() == TYPEID_PLAYER)
-                Class = target->getClass();
-            else if (Creature* cre = target->ToCreature())
-                Class = cre->GetBotAI() ? cre->GetBotAI()->GetPlayerClass() : cre->getClass();
-
+                Class = target->ToPlayer()->getClass();
+            else if (target->ToCreature())
+                Class = target->ToCreature()->GetBotClass();
             switch (Class)
             {
-                case BOT_CLASS_PRIEST:
+                case CLASS_PRIEST:
                     if (BLESSING_OF_WISDOM && !wisdom && doCast(target, BLESSING_OF_WISDOM))
                         return true;
                     else if (BLESSING_OF_KINGS && !kings && doCast(target, BLESSING_OF_KINGS))
                         return true;
-                    else if (BLESSING_OF_SANCTUARY && !sanctuary && doCast(target, BLESSING_OF_SANCTUARY))
-                        return true;
                     break;
-                case BOT_CLASS_DEATH_KNIGHT:
-                case BOT_CLASS_WARRIOR:
-                case BOT_CLASS_PALADIN:
-                case BOT_CLASS_ROGUE:
-                case BOT_CLASS_HUNTER:
-                case BOT_CLASS_SHAMAN:
+                case CLASS_DEATH_KNIGHT:
+                case CLASS_WARRIOR:
+                case CLASS_PALADIN:
+                case CLASS_ROGUE:
+                case CLASS_HUNTER:
+                case CLASS_SHAMAN:
                     if (BLESSING_OF_KINGS && !kings && doCast(target, BLESSING_OF_KINGS))
                         return true;
-                    else if (BLESSING_OF_MIGHT && !might && doCast(target, BLESSING_OF_MIGHT))
+                    else if (!might && doCast(target, BLESSING_OF_MIGHT))
                         return true;
                     else if (BLESSING_OF_SANCTUARY && !sanctuary && doCast(target, BLESSING_OF_SANCTUARY))
                         return true;
@@ -533,7 +522,7 @@ public:
                         return true;
                     else if (BLESSING_OF_SANCTUARY && !sanctuary && doCast(target, BLESSING_OF_SANCTUARY))
                         return true;
-                    else if (BLESSING_OF_MIGHT && !might && doCast(target, BLESSING_OF_MIGHT))
+                    else if (!might && doCast(target, BLESSING_OF_MIGHT))
                         return true;
                     break;
             }
@@ -546,13 +535,13 @@ public:
             if (target)
             {
                 if (IsSpellReady(REPENTANCE_1, diff, false, 25000) && doCast(target, GetSpell(REPENTANCE_1)))
-                {}
+                    SetSpellCooldown(REPENTANCE_1, 45000);
             }
             else if (IsSpellReady(REPENTANCE_1, diff, false))
             {
                 Unit* u = FindStunTarget();
                 if (u && u->GetVictim() != me && doCast(u, GetSpell(REPENTANCE_1)))
-                {}
+                    SetSpellCooldown(REPENTANCE_1, 45000);
             }
             GC_Timer = temptimer;
         }
@@ -572,14 +561,20 @@ public:
                 target = FindCastingTarget(20, 0, false, TURN_EVIL_1);
                 temptimer = GC_Timer;
                 if (target && doCast(target, GetSpell(TURN_EVIL_1), true))
+                {
+                    SetSpellCooldown(TURN_EVIL_1, 3000);
                     GC_Timer = temptimer;
+                }
             }
             else if (IsSpellReady(HOLY_WRATH_1, diff, false, 8000) && HasRole(BOT_ROLE_DPS))
             {
                 target = FindCastingTarget(8, 0, false, TURN_EVIL_1); //here we check target as with turn evil cuz of same requirements
                 temptimer = GC_Timer;
                 if (target && doCast(me, GetSpell(HOLY_WRATH_1)))
+                {
+                    SetSpellCooldown(HOLY_WRATH_1, 23000 - me->getLevel() * 100); //23 - 0...8 sec (15 sec on 80 as with glyph)
                     GC_Timer = temptimer;
+                }
             }
             else if (IsSpellReady(HAMMER_OF_JUSTICE_1, diff, /*true*/false, 7000))
             {
@@ -591,7 +586,7 @@ public:
 
         void CheckBattleRez(uint32 diff)
         {
-            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
 
             Group* gr = master->GetGroup();
             if (!gr)
@@ -613,7 +608,7 @@ public:
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                    BotWhisper("Rezzing You", master);
+					me->MonsterWhisper("Rezzing You", master);
 
                 return;
             }
@@ -638,7 +633,7 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    BotWhisper("Rezzing You", tPlayer);
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
@@ -653,14 +648,20 @@ public:
             if (target &&
                 (target != me->GetVictim() || GetHealthPCT(me) < 70 || target->GetVictim() == master) &&
                 doCast(target, GetSpell(TURN_EVIL_1), true))
+            {
+                SetSpellCooldown(TURN_EVIL_1, 3000);
                 return;
+            }
             else
             if ((opponent->GetCreatureType() == CREATURE_TYPE_UNDEAD || opponent->GetCreatureType() == CREATURE_TYPE_DEMON) &&
                 !CCed(opponent) &&
                 opponent->GetVictim() && !IsTank(opponent->GetVictim()) && opponent->GetVictim() != me &&
                 GetHealthPCT(me) < 90 &&
                 doCast(opponent, GetSpell(TURN_EVIL_1), true))
+            {
+                SetSpellCooldown(TURN_EVIL_1, 3000);
                 return;
+            }
         }
 
         void Wrath(uint32 diff)
@@ -669,12 +670,12 @@ public:
                 return;
             if ((opponent->GetCreatureType() == CREATURE_TYPE_UNDEAD || opponent->GetCreatureType() == CREATURE_TYPE_DEMON) &&
                 me->GetExactDist(opponent) <= 8 && doCast(me, GetSpell(HOLY_WRATH_1)))
-            {}
+                SetSpellCooldown(HOLY_WRATH_1, 23000 - me->getLevel() * 100); //23 - 0...8 sec (15 sec on 80 as with glyph)
             else
             {
                 Unit* target = FindUndeadCCTarget(8, GetSpell(HOLY_WRATH_1));
                 if (target && doCast(me, GetSpell(HOLY_WRATH_1)))
-                {}
+                    SetSpellCooldown(HOLY_WRATH_1, 23000 - me->getLevel() * 100); //23 - 0...8 sec (15 sec on 80 as with glyph)
             }
         }
 
@@ -702,6 +703,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(opponent, GetSpell(HOW_1)))
                 {
+                    SetSpellCooldown(HOW_1, 6000); //6 sec
                     GC_Timer = temptimer;
                     return;
                 }
@@ -718,6 +720,7 @@ public:
                     GetHealthPCT(u) < GetHealthPCT(me) - 5 || IsTank()) &&
                     doCast(opponent, GetSpell(HANDOFRECKONING_1)))
                 {
+                    SetSpellCooldown(HANDOFRECKONING_1, IsTank() ? 4000 : 8000);
                     GC_Timer = temptimer;
                     return;
                 }
@@ -727,21 +730,30 @@ public:
                 me->GetExactDist(opponent) < 10 && Rand() < 20)
             {
                 if (doCast(opponent, GetSpell(HAMMER_OF_JUSTICE_1)))
+                {
+                    SetSpellCooldown(HAMMER_OF_JUSTICE_1, 65000 - master->getLevel()*500); //25 sec on 80
                     return;
+                }
             }
 
             if (IsSpellReady(JUDGEMENT_1, diff) && HasRole(BOT_ROLE_DPS) && me->GetExactDist(opponent) < 10 &&
                 Rand() < 50 && me->HasAura(GetSpell(SEAL_OF_COMMAND_1)))
             {
                 if (doCast(opponent, GetSpell(JUDGEMENT_1)))
+                {
+                    SetSpellCooldown(JUDGEMENT_1, 7000);
                     return;
+                }
             }
 
             if (IsSpellReady(CONSECRATION_1, diff) && HasRole(BOT_ROLE_DPS) && me->GetDistance(opponent) < 7 &&
                 !opponent->isMoving() && Rand() < 50)
             {
                 if (doCast(me, GetSpell(CONSECRATION_1)))
+                {
+                    SetSpellCooldown(CONSECRATION_1, 8000);
                     return;
+                }
             }
 
             if (IsSpellReady(AVENGING_WRATH_1, diff, false) && HasRole(BOT_ROLE_DPS) &&
@@ -750,6 +762,7 @@ public:
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(AVENGING_WRATH_1)))
                 {
+                    SetSpellCooldown(AVENGING_WRATH_1, 60000); //1 min
                     GC_Timer = temptimer;
                     return;
                 }
@@ -758,14 +771,20 @@ public:
             if (IsSpellReady(CRUSADER_STRIKE_1, diff) && HasRole(BOT_ROLE_DPS) && me->GetDistance(opponent) < 5)
             {
                 if (doCast(opponent, GetSpell(CRUSADER_STRIKE_1)))
+                {
+                    SetSpellCooldown(CRUSADER_STRIKE_1, 12000 - me->getLevel() * 100);//4 sec on 80
                     return;
+                }
             }
 
             if (IsSpellReady(EXORCISM_1, diff) && HasRole(BOT_ROLE_DPS) && me->GetExactDist(opponent) < 30 &&
                 (!IsTank() || opponent->GetVictim() == me || opponent->IsVehicle() || opponent->ToPlayer()))
             {
                 if (doCast(opponent, GetSpell(EXORCISM_1), me->HasAura(THE_ART_OF_WAR_BUFF)))
+                {
+                    SetSpellCooldown(EXORCISM_1, 7000);
                     return;
+                }
             }
 
             Wrath(diff);
@@ -773,11 +792,12 @@ public:
             if (IsSpellReady(DIVINE_STORM_1, diff) && HasRole(BOT_ROLE_DPS) && me->GetExactDist(opponent) < 7)
             {
                 if (doCast(opponent, GetSpell(DIVINE_STORM_1)))
+                {
+                    SetSpellCooldown(DIVINE_STORM_1, 10000 - me->getLevel()/4 * 100); //10 - 2 sec
                     return;
+                }
             }
         }
-
-        void ApplyClassDamageMultiplierMelee(uint32& /*damage*/, CalcDamageInfo& /*damageinfo*/) const {}
 
         void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool& crit) const
         {
@@ -811,13 +831,6 @@ public:
                 spellId == GetSpell(CRUSADER_STRIKE_1) ||
                 spellId == GetSpell(DIVINE_STORM_1)))
                 pctbonus += 0.1f;
-            //Judgements of the Pure (damage part): 25% bonus damage for Judgements and Seals
-            if (lvl >= 50 &&
-                (spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT ||
-                spellInfo->GetSpellSpecific() == SPELL_SPECIFIC_JUDGEMENT ||
-                spellInfo->GetSpellSpecific() == SPELL_SPECIFIC_SEAL ||
-                spellId == JUDGEMENT_OF_COMMAND_DAMAGE))
-                pctbonus += 0.25f;
 
             damage = int32(fdamage * (1.0f + pctbonus));
         }
@@ -834,9 +847,6 @@ public:
                 //Sanctified Wrath: 50% additional critical chance for Hammer of Wrath
                 if (lvl >= 45 && spellId == GetSpell(HOW_1))
                     aftercrit += 50.f;
-                //Holy Power: 5% additional critical chance for Holy spells
-                if (lvl >= 35 && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_HOLY))
-                    aftercrit += 5.f;
 
                 if (aftercrit > 0.f)
                     crit = roll_chance_f(aftercrit);
@@ -848,48 +858,7 @@ public:
             //{
             //}
 
-            //Judgements of the Pure (damage part): 25% bonus damage for Judgements and Seals
-            if (lvl >= 50 &&
-                (spellInfo->GetCategory() == SPELLCATEGORY_JUDGEMENT ||
-                spellInfo->GetSpellSpecific() == SPELL_SPECIFIC_JUDGEMENT ||
-                spellInfo->GetSpellSpecific() == SPELL_SPECIFIC_SEAL ||
-                spellId == JUDGEMENT_OF_COMMAND_DAMAGE))
-                pctbonus += 0.25f;
-
             damage = int32(fdamage * (1.0f + pctbonus));
-        }
-
-        void ApplyClassDamageMultiplierHeal(Unit const* /*victim*/, float& heal, SpellInfo const* spellInfo, DamageEffectType /*damagetype*/, uint32 /*stack*/) const
-        {
-            uint32 spellId = spellInfo->Id;
-            uint8 lvl = me->getLevel();
-            float pctbonus = 0.0f;
-            float flat_mod = 0.0f;
-
-            //Healing Light: 12% bonus healing for Holy Light, Flash of Light and Holy Shock
-            if (lvl >= 15 &&
-                (spellId == GetSpell(HOLY_LIGHT_1) ||
-                spellId == GetSpell(FLASH_OF_LIGHT_1) ||
-                spellId == GetSpell(HOLY_SHOCK_1)))
-                pctbonus += 0.12f;
-
-            heal = heal * (1.0f + pctbonus) + flat_mod;
-        }
-
-        void ApplyClassCritMultiplierHeal(Unit const* /*victim*/, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const
-        {
-            uint32 spellId = spellInfo->Id;
-            uint8 lvl = me->getLevel();
-            float aftercrit = 0.0f;
-
-            //Sanctified Light: 6% additional critical chance for Holy Light and Holy Shock
-            if (lvl >= 30 && (spellId == GetSpell(HOLY_LIGHT_1) || spellId == GetSpell(HOLY_SHOCK_1)))
-                aftercrit += 6.f;
-            //Holy Power: 5% additional critical chance for Holy spells
-            if (lvl >= 35 && (schoolMask & SPELL_SCHOOL_MASK_HOLY))
-                aftercrit += 5.f;
-
-            crit_chance += aftercrit;
         }
 
         void SpellHitTarget(Unit* target, SpellInfo const* spell)
@@ -903,6 +872,17 @@ public:
                 me->RemoveAura(THE_ART_OF_WAR_BUFF, 0, 0, AURA_REMOVE_BY_EXPIRE);
             }
 
+            if (spellId == GetSpell(BLESSING_OF_KINGS_1) || spellId == GetSpell(BLESSING_OF_MIGHT_1) ||
+                spellId == GetSpell(BLESSING_OF_WISDOM_1) || spellId == GetSpell(BLESSING_OF_SANCTUARY_1))
+            {
+                //Blessings duration 1h
+                if (Aura* bless = target->GetAura(spellId, me->GetGUID()))
+                {
+                    uint32 dur = HOUR * IN_MILLISECONDS;
+                    bless->SetDuration(dur);
+                    bless->SetMaxDuration(dur);
+                }
+            }
             if (spellId == GetSpell(HOF_1))
             {
                 //Guardian's Favor part 2 (handled separately)
@@ -911,21 +891,6 @@ public:
                     uint32 dur = hof->GetDuration() + 4000;
                     hof->SetDuration(dur);
                     hof->SetMaxDuration(dur);
-                }
-            }
-
-            //if (!IAmFree())
-            {
-                if (spellId == GetSpell(BLESSING_OF_KINGS_1) || spellId == GetSpell(BLESSING_OF_MIGHT_1) ||
-                    spellId == GetSpell(BLESSING_OF_WISDOM_1) || spellId == GetSpell(BLESSING_OF_SANCTUARY_1))
-                {
-                    //Blessings duration 1h
-                    if (Aura* bless = target->GetAura(spellId, me->GetGUID()))
-                    {
-                        uint32 dur = HOUR * IN_MILLISECONDS;
-                        bless->SetDuration(dur);
-                        bless->SetMaxDuration(dur);
-                    }
                 }
             }
         }
@@ -937,12 +902,10 @@ public:
 
         void DamageTaken(Unit* u, uint32& /*damage*/)
         {
-            if (!u->IsInCombat() && !me->IsInCombat())
-                return;
             OnOwnerDamagedBy(u);
         }
 
-        void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
+        void DamageDealt(Unit* victim, uint32& /*damage*/, DamageEffectType damageType)
         {
             //Custom OnHit() handlers
 
@@ -954,19 +917,23 @@ public:
                         me->CastSpell(me, THE_ART_OF_WAR_BUFF, true);
             }
 
-            bot_ai::DamageDealt(victim, damage, damageType);
-        }
+            if (victim == me)
+                return;
 
-        void HealReceived(Unit* healer, uint32& heal)
-        {
-            //Spiritual Attunement
-            if (heal && me->getLevel() >= 40 && healer != me && HasRole(BOT_ROLE_TANK) && GetLostHP(me))
+            if (damageType == DIRECT_DAMAGE || damageType == SPELL_DIRECT_DAMAGE)
             {
-                if (int32 basepoints = int32(CalculatePct(std::min<int32>(heal, GetLostHP(me)), 10)))
-                    me->CastCustomSpell(me, SPIRITUAL_ATTUNEMENT_ENERGIZE, &basepoints, NULL, NULL, true);
-            }
+                for (uint8 i = 0; i != MAX_BOT_CTC_SPELLS; ++i)
+                {
+                    if (_ctc[i].first && !_ctc[i].second)
+                    {
+                        if (urand(1,100) <= CalcCTC(_ctc[i].first))
+                            _ctc[i].second = 1000;
 
-            //bot_ai::HealReceived(healer, heal);
+                        if (_ctc[i].second > 0)
+                            me->CastSpell(victim, _ctc[i].first, true);
+                    }
+                }
+            }
         }
 
         void OwnerAttackedBy(Unit* u)
@@ -976,12 +943,22 @@ public:
 
         void Reset()
         {
-            DefaultInit();
+            if (master)
+            {
+                SetStats(true);
+                InitRoles();
+                ApplyPassives(CLASS_PALADIN);
+            }
         }
 
-        void ReduceCD(uint32 /*diff*/)
+        void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
         }
+
+        bool CanRespawn()
+        {return false;}
 
         void InitSpells()
         {
@@ -1017,42 +994,78 @@ public:
             InitSpellMap(HOF_1);
             InitSpellMap(HOS_1);
             InitSpellMap(HANDOFRECKONING_1);
-
- /*SPECIAL*/InitSpellMap(ARDENT_DEFENDER_HEAL, true);
         }
 
         void ApplyClassPassives()
         {
             uint8 level = master->getLevel();
-
-            //RefreshAura(SPELLDMG, /*level >= 78 ? 5 : level >= 75 ? 4 */level >= 55 ? 3 : level >= 35 ? 2 : level >= 15 ? 1 : 0);
-            //RefreshAura(SPELLDMG2, level >= 55 ? 3 : level >= 35 ? 2 : level >= 15 ? 1 : 0);
-            RefreshAura(PURE, level >= 55 ? 1 : 0);
-            RefreshAura(WISE, level >= 35 ? 1 : 0);
-            RefreshAura(RECKONING5, level >= 50 ? 1 : 0);
-            RefreshAura(RECKONING4, level >= 45 && level < 50 ? 1 : 0);
-            RefreshAura(RECKONING3, level >= 40 && level < 45 ? 1 : 0);
-            RefreshAura(RECKONING2, level >= 35 && level < 40 ? 1 : 0);
-            RefreshAura(RECKONING1, level >= 30 && level < 35 ? 1 : 0);
-            RefreshAura(VENGEANCE3, level >= 30 ? 1 : 0);
-            RefreshAura(VENGEANCE2, level >= 27 && level < 30 ? 1 : 0);
-            RefreshAura(VENGEANCE1, level >= 25 && level < 27 ? 1 : 0);
-            RefreshAura(SHOFL3, level >= 60 ? 1 : 0);
-            RefreshAura(SHOFL2, level >= 55 && level < 60 ? 1 : 0);
-            RefreshAura(SHOFL1, level >= 50 && level < 55 ? 1 : 0);
-            RefreshAura(SACRED_CLEANSING, level >= 45 ? 1 : 0);
-            RefreshAura(DIVINE_PURPOSE, level >= 35 ? 1 : 0);
-            RefreshAura(VINDICATION2, level >= 25 ? 1 : 0);
-            RefreshAura(VINDICATION1, level >= 20 && level < 25 ? 1 : 0);
-            RefreshAura(LAYHANDS, level >= 30 ? 1 : 0);
-            RefreshAura(FANATICISM, level >= 20 ? 2 : 0);
-            RefreshAura(ARDENT_DEFENDER, level >= 40 ? 1 : 0);
-            RefreshAura(ILLUMINATION, level >= 20 ? 1 : 0);
-            RefreshAura(INFUSION_OF_LIGHT, level >= 55 ? 1 : 0); //NYI
-            RefreshAura(REDOUBT3, level >= 68 ? 2 : level >= 55 ? 1 : 0);
-            RefreshAura(REDOUBT2, level >= 50 && level < 55 ? 1 : 0);
-            RefreshAura(REDOUBT1, level >= 45 && level < 50 ? 1 : 0);
-            RefreshAura(GLYPH_HOLY_LIGHT, level >= 15 ? 1 : 0);
+            //1 - SPD 3% crit 3%
+            if (level >= 78)
+                RefreshAura(SPELLDMG,5); //+15%
+            else if (level >= 75)
+                RefreshAura(SPELLDMG,4); //+12%
+            else if (level >= 55)
+                RefreshAura(SPELLDMG,3); //+9%
+            else if (level >= 35)
+                RefreshAura(SPELLDMG,2); //+6%
+            else if (level >= 15)
+                RefreshAura(SPELLDMG); //+3%
+            //2 - SPD 6%
+            if (level >= 55)
+                RefreshAura(SPELLDMG2,3); //+18%
+            else if (level >= 35)
+                RefreshAura(SPELLDMG2,2); //+12%
+            else if (level >= 15)
+                RefreshAura(SPELLDMG2); //+6%
+            //Talents
+            if (level >= 55)
+                RefreshAura(PURE);
+            if (level >= 35)
+                RefreshAura(WISE);
+            if (level >= 50)
+                RefreshAura(RECKONING5); //10%
+            else if (level >= 45)
+                RefreshAura(RECKONING4); //8%
+            else if (level >= 40)
+                RefreshAura(RECKONING3); //6%
+            else if (level >= 35)
+                RefreshAura(RECKONING2); //4%
+            else if (level >= 30)
+                RefreshAura(RECKONING1); //2%
+            //if (level >= 50)
+            //    RefreshAura(RIGHTEOUS_VENGEANCE3);
+            //else if (level >= 47)
+            //    RefreshAura(RIGHTEOUS_VENGEANCE2);
+            //else if (level >= 45)
+            //    RefreshAura(RIGHTEOUS_VENGEANCE1);
+            if (level >= 30)
+                RefreshAura(VENGEANCE3);
+            else if (level >= 27)
+                RefreshAura(VENGEANCE2);
+            else if (level >= 25)
+                RefreshAura(VENGEANCE1);
+            if (level >= 60)
+                RefreshAura(SHOFL3);
+            else if (level >= 55)
+                RefreshAura(SHOFL2);
+            else if (level >= 50)
+                RefreshAura(SHOFL1);
+            if (level >= 45)
+                RefreshAura(SACRED_CLEANSING);
+            if (level >= 35)
+                RefreshAura(DIVINE_PURPOSE);
+            if (level >= 25)
+                RefreshAura(VINDICATION2);
+            else if (level >= 20)
+                RefreshAura(VINDICATION1);
+            if (level >= 30)
+                RefreshAura(LAYHANDS);
+            if (level >= 20)
+                RefreshAura(FANATICISM,2); //-60% aggro
+            if (level >= 15)
+                RefreshAura(GLYPH_HOLY_LIGHT); //10% heal
+            //if (level >= 70)
+            //    RefreshAura(PALADIN_T9_2P_BONUS); //Righteous Vengeance Crits
         }
 
         bool CanUseManually(uint32 basespell) const
@@ -1082,51 +1095,6 @@ public:
         }
 
     private:
-
-        //uint32 GetBlessingsMask(Unit const*) const
-        //Scans target for auras which are related to paladin's blessings
-        //(even if aura is just incompatible with one)
-        //returns applied blessings mask
-        //used for finding out which blessings target lacks
-        uint32 GetBlessingsMask(Unit const* target) const
-        {
-            uint32 mask = 0;
-
-            bool blessing;
-            Unit::AuraApplicationMap const& aurapps = target->GetAppliedAuras();
-            for (Unit::AuraApplicationMap::const_iterator itr = aurapps.begin(); itr != aurapps.end(); ++itr)
-            {
-                blessing = true;
-                switch (itr->second->GetBase()->GetSpellInfo()->GetFirstRankSpell()->Id)
-                {
-                    case BLESSING_OF_WISDOM_1:
-                    case GREATER_BLESSING_OF_WISDOM_1:
-                        mask |= SPECIFIC_BLESSING_WISDOM;
-                        break;
-                    case BLESSING_OF_KINGS_1:
-                    case GREATER_BLESSING_OF_KINGS_1:
-                        mask |= SPECIFIC_BLESSING_KINGS;
-                        break;
-                    case BLESSING_OF_SANCTUARY_1:
-                    case GREATER_BLESSING_OF_SANCTUARY_1:
-                        mask |= SPECIFIC_BLESSING_SANCTUARY;
-                        break;
-                    case BLESSING_OF_MIGHT_1:
-                    case GREATER_BLESSING_OF_MIGHT_1:
-                    case BATTLESHOUT_1:
-                        mask |= SPECIFIC_BLESSING_MIGHT;
-                        break;
-                    default:
-                        blessing = false; //next aura
-                        break;
-                }
-
-                if (blessing && itr->second->GetBase()->GetCasterGUID() == me->GetGUID())
-                    mask |= SPECIFIC_BLESSING_MY_BLESSING;
-            }
-
-            return mask;
-        }
 
         enum PaladinBaseSpells// all orignals
         {
@@ -1188,24 +1156,18 @@ public:
             SHOFL1      /*Sheath of Light*/     = 53501,//rank 1
             SHOFL2                              = 53502,//rank 2
             SHOFL3                              = 53503,//rank 3
-            ARDENT_DEFENDER                     = 31852,//rank 3
-            ILLUMINATION                        = 20215,//rank 5
-            INFUSION_OF_LIGHT                   = 53576,//rank 2
-            REDOUBT1                            = 20127,//rank 3
-            REDOUBT2                            = 20130,//rank 3
-            REDOUBT3                            = 20135,//rank 3
         //Glyphs
-            GLYPH_HOLY_LIGHT                    = 54937
+            GLYPH_HOLY_LIGHT                    = 54937,
         //other
-            //SPELLDMG/*Arcane Instability-mage*/ = 15060,//rank3 3% dam/crit
-            //SPELLDMG2/*Earth and Moon - druid*/ = 48511 //rank3 6% dam
+            SPELLDMG/*Arcane Instability-mage*/ = 15060,//rank3 3% dam/crit
+            SPELLDMG2/*Earth and Moon - druid*/ = 48511 //rank3 6% dam
         };
 
         enum PaladinSpecial
         {
-            NOAURA                              = 0,
-            DEVOTIONAURA                        = 1,
-            CONCENTRATIONAURA                   = 2,
+            NOAURA,
+            DEVOTIONAURA,
+            CONCENTRATIONAURA,
 
             THE_ART_OF_WAR_BUFF                 = 59578,
             FORBEARANCE_AURA                    = 25771,
@@ -1214,17 +1176,7 @@ public:
             GREATER_BLESSING_OF_WISDOM_1        = 25894,
             GREATER_BLESSING_OF_KINGS_1         = 25898,
             GREATER_BLESSING_OF_SANCTUARY_1     = 25899,
-            BATTLESHOUT_1                       = 6673,
-
-            ARDENT_DEFENDER_HEAL                = 66235,
-            JUDGEMENT_OF_COMMAND_DAMAGE         = 20467,
-            SPIRITUAL_ATTUNEMENT_ENERGIZE       = 31786,
-
-            SPECIFIC_BLESSING_WISDOM            = 0x01,
-            SPECIFIC_BLESSING_KINGS             = 0x02,
-            SPECIFIC_BLESSING_SANCTUARY         = 0x04,
-            SPECIFIC_BLESSING_MIGHT             = 0x08,
-            SPECIFIC_BLESSING_MY_BLESSING       = 0x10
+            BATTLESHOUT_1                       = 6673
         };
     };
 };

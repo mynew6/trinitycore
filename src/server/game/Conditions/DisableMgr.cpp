@@ -339,7 +339,7 @@ bool IsDisabledFor(DisableType type, uint32 entry, Unit const* unit, uint8 flags
             else if (spellFlags & SPELL_DISABLE_DEPRECATED_SPELL)    // call not from spellcast
                 return true;
             else if (flags & SPELL_DISABLE_LOS)
-                return (spellFlags & SPELL_DISABLE_LOS) != 0;
+                return spellFlags & SPELL_DISABLE_LOS;
 
             break;
         }
@@ -355,13 +355,13 @@ bool IsDisabledFor(DisableType type, uint32 entry, Unit const* unit, uint8 flags
                     switch (targetDifficulty)
                     {
                         case DUNGEON_DIFFICULTY_NORMAL:
-                            return (disabledModes & DUNGEON_STATUSFLAG_NORMAL) != 0;
+                            return disabledModes & DUNGEON_STATUSFLAG_NORMAL;
                         case DUNGEON_DIFFICULTY_HEROIC:
-                            return (disabledModes & DUNGEON_STATUSFLAG_HEROIC) != 0;
+                            return disabledModes & DUNGEON_STATUSFLAG_HEROIC;
                         case RAID_DIFFICULTY_10MAN_HEROIC:
-                            return (disabledModes & RAID_STATUSFLAG_10MAN_HEROIC) != 0;
+                            return disabledModes & RAID_STATUSFLAG_10MAN_HEROIC;
                         case RAID_DIFFICULTY_25MAN_HEROIC:
-                            return (disabledModes & RAID_STATUSFLAG_25MAN_HEROIC) != 0;
+                            return disabledModes & RAID_STATUSFLAG_25MAN_HEROIC;
                     }
                 }
                 else if (mapEntry->map_type == MAP_COMMON)
@@ -381,7 +381,7 @@ bool IsDisabledFor(DisableType type, uint32 entry, Unit const* unit, uint8 flags
         case DISABLE_TYPE_MMAP:
             return true;
         case DISABLE_TYPE_VMAP:
-           return (flags & itr->second.flags) != 0;
+           return flags & itr->second.flags;
     }
 
     return false;

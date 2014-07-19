@@ -128,7 +128,7 @@ class spell_mage_burnout : public SpellScriptLoader
 
             bool CheckProc(ProcEventInfo& eventInfo)
             {
-                return eventInfo.GetDamageInfo()->GetSpellInfo() != nullptr;
+                return eventInfo.GetDamageInfo()->GetSpellInfo(); // eventInfo.GetSpellInfo()
             }
 
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
@@ -381,7 +381,7 @@ class spell_mage_ignite : public SpellScriptLoader
 
             bool CheckProc(ProcEventInfo& eventInfo)
             {
-                return eventInfo.GetProcTarget() != nullptr;
+                return eventInfo.GetProcTarget();
             }
 
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
@@ -505,7 +505,7 @@ class spell_mage_master_of_elements : public SpellScriptLoader
 
             bool CheckProc(ProcEventInfo& eventInfo)
             {
-                return eventInfo.GetDamageInfo()->GetSpellInfo() != nullptr;
+                return eventInfo.GetDamageInfo()->GetSpellInfo(); // eventInfo.GetSpellInfo()
             }
 
             void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)

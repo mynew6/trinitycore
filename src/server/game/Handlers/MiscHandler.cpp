@@ -57,6 +57,9 @@
 #include "BattlefieldMgr.h"
 #include "LuaEngine.h"
 
+//Bot
+#include "bothelper.h"
+
 void WorldSession::HandleRepopRequestOpcode(WorldPacket& recvData)
 {
     TC_LOG_DEBUG("network", "WORLD: Recvd CMSG_REPOP_REQUEST Message");
@@ -126,6 +129,16 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             return;
         }
     }
+    //Bot
+    else if (IS_PLAYER_GUID(guid))
+    {
+        if (guid != _player->GetGUID())
+        {
+            TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) not found.", uint32(GUID_LOPART(guid)));
+            return;
+        }
+    }
+    //end Bot
     else if (IS_GAMEOBJECT_GUID(guid))
     {
         go = _player->GetMap()->GetGameObject(guid);
@@ -182,6 +195,17 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             if (!sScriptMgr->OnGossipSelectCode(_player, unit, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId), code.c_str()))
                 _player->OnGossipSelect(unit, gossipListId, menuId);
         }
+                //Bot
+        else if (guid == _player->GetGUID())
+        {
+            if (!_player->GetBotHelper())
+            {
+                TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) do not have a helper on gossip select.", uint32(GUID_LOPART(guid)));
+                return;
+            }
+            //_player->GetBotHelper()->OnCodedGossipSelect(_player, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId), code.c_str());
+        }
+        //end Bot
 #ifdef ELUNA
         else if (item)
         {
@@ -194,6 +218,7 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             return;
         }
 #endif
+
         else
         {
             go->AI()->GossipSelectCode(_player, menuId, gossipListId, code.c_str());
@@ -209,6 +234,17 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             if (!sScriptMgr->OnGossipSelect(_player, unit, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId)))
                 _player->OnGossipSelect(unit, gossipListId, menuId);
         }
+        //Bot
+        else if (guid == _player->GetGUID())
+        {
+            if (!_player->GetBotHelper())
+            {
+                TC_LOG_ERROR("network", "WORLD: HandleGossipSelectOptionOpcode - Player (GUID: %u) do not have a helper on gossip select.", uint32(GUID_LOPART(guid)));
+                return;
+            }
+            _player->GetBotHelper()->OnGossipSelect(_player, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+        }
+        //end Bot
 #ifdef ELUNA
         else if (_player->GetGUID() == guid && menuId == _player->PlayerTalkClass->GetGossipMenu().GetMenuId())
         {
@@ -221,6 +257,7 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
             return;
         }
 #endif
+
         else
         {
             go->AI()->GossipSelect(_player, menuId, gossipListId);
@@ -303,8 +340,7 @@ void WorldSession::HandleWhoOpcode(WorldPacket& recvData)
     data << uint32(matchcount);                           // placeholder, count of players matching criteria
     data << uint32(displaycount);                         // placeholder, count of players displayed
 
-    boost::shared_lock<boost::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
-
+    TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
     HashMapHolder<Player>::MapType const& m = sObjectAccessor->GetPlayers();
     for (HashMapHolder<Player>::MapType::const_iterator itr = m.begin(); itr != m.end(); ++itr)
     {
@@ -551,7 +587,7 @@ void WorldSession::HandleZoneUpdateOpcode(WorldPacket& recvData)
 
     // use server side data, but only after update the player position. See Player::UpdatePosition().
     GetPlayer()->SetNeedsZoneUpdate(true);
-
+ 
     //GetPlayer()->SendInitWorldStates(true, newZone);
 }
 

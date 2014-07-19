@@ -1,10 +1,9 @@
 #include "bot_ai.h"
-#include "botmgr.h"
 #include "Group.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
-//#include "WorldSession.h"
+#include "WorldSession.h"
 /*
 Priest NpcBot (reworked by Graff onlysuffering@gmail.com)
 Complete - Around 50%
@@ -22,7 +21,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature)
     {
-        return bot_minion_ai::OnGossipHello(player, creature, 0);
+        return bot_minion_ai::OnGossipHello(player, creature);
     }
 
     bool OnGossipSelect(Player* player, Creature* creature, uint32 sender, uint32 action)
@@ -32,30 +31,20 @@ public:
         return true;
     }
 
-    bool OnGossipSelectCode(Player* player, Creature* creature, uint32 sender, uint32 action, char const* code)
-    {
-        if (bot_minion_ai* ai = creature->GetBotMinionAI())
-            return ai->OnGossipSelectCode(player, creature, sender, action, code);
-        return true;
-    }
-
     struct priest_botAI : public bot_minion_ai
     {
-        priest_botAI(Creature* creature) : bot_minion_ai(creature)
-        {
-            _botclass = BOT_CLASS_PRIEST;
-        }
+        priest_botAI(Creature* creature) : bot_minion_ai(creature) { }
 
         bool doCast(Unit* victim, uint32 spellId, bool triggered = false)
         {
-            if (CheckBotCast(victim, spellId, BOT_CLASS_PRIEST) != SPELL_CAST_OK)
+            if (CheckBotCast(victim, spellId, CLASS_PRIEST) != SPELL_CAST_OK)
                 return false;
             return bot_ai::doCast(victim, spellId, triggered);
         }
 
         bool MassGroupHeal(Player* player, uint32 diff)
         {
-            if (IAmFree() || !player->GetGroup()) return false;
+            if (!player->GetGroup()) return false;
             if (IsCasting()) return false;
             if (Rand() > 35) return false;
 
@@ -79,10 +68,9 @@ public:
                     if (LHPcount > 1)
                         break;
                     if (!tPlayer->HaveBot()) continue;
-                    BotMap const* map = tPlayer->GetBotMgr()->GetBotMap();
-                    for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
+                    for (uint8 i = 0; i != tPlayer->GetMaxNpcBots(); ++i)
                     {
-                        Creature* bot = it->second;
+                        Creature* bot = tPlayer->GetBotMap(i)->_Cre();
                         if (bot && GetHealthPCT(bot) < 40 && me->GetExactDist(bot) < 30)
                             ++LHPcount;
                         if (LHPcount > 1)
@@ -90,7 +78,10 @@ public:
                     }
                 }
                 if (LHPcount > 1 && doCast(me, GetSpell(DIVINE_HYMN_1)))
+                {
+                    SetSpellCooldown(DIVINE_HYMN_1, 180000); //3 min
                     return true;
+                }
             }
             if (GetSpell(PRAYER_OF_HEALING_1))
             {
@@ -117,10 +108,9 @@ public:
                     if (LHPcount > 2)
                         break;
                     if (!tPlayer->HaveBot()) continue;
-                    BotMap const* map = tPlayer->GetBotMgr()->GetBotMap();
-                    for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
+                    for (uint8 i = 0; i != tPlayer->GetMaxNpcBots(); ++i)
                     {
-                        Creature* bot = it->second;
+                        Creature* bot = tPlayer->GetBotMap(i)->_Cre();
                         if (bot && GetHealthPCT(bot) < 70 && me->GetExactDist(bot) < 15)
                         {
                             ++LHPcount;
@@ -154,6 +144,10 @@ public:
 
             if (doCast(target, GetSpell(PW_SHIELD_1)))
             {
+                if (me->getLevel() >= 30 || (target->ToCreature() && target->ToCreature()->GetBotAI()))
+                    SetSpellCooldown(PW_SHIELD_1, 1000);
+                else
+                    SetSpellCooldown(PW_SHIELD_1, 4000);
                 GC_Timer = 800;
                 return true;
             }
@@ -165,23 +159,21 @@ public:
             if (GetBotCommandState() == COMMAND_ATTACK && !force) return;
             Aggro(u);
             SetBotCommandState(COMMAND_ATTACK);
-            OnStartAttack(u);
             GetInPosition(force);
         }
 
-        void EnterCombat(Unit* u) { bot_minion_ai::EnterCombat(u); }
+        void EnterCombat(Unit*) { }
         void Aggro(Unit*) { }
         void AttackStart(Unit*) { }
         void KilledUnit(Unit*) { }
-        void EnterEvadeMode() { bot_minion_ai::EnterEvadeMode(); }
-        void MoveInLineOfSight(Unit* u) { bot_minion_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) { bot_minion_ai::JustDied(u); }
+        void EnterEvadeMode() { }
+        void MoveInLineOfSight(Unit*) { }
+        void JustDied(Unit* u) { bot_ai::JustDied(u); }
 
         void UpdateAI(uint32 diff)
         {
             ReduceCD(diff);
-            if (!GlobalUpdate(diff))
-                return;
+            if (IAmDead()) return;
             CheckAttackState();
             CheckAuras();
             if (wait == 0)
@@ -193,7 +185,7 @@ public:
             if (CCed(me)) return;
             DoDevCheck(diff);
 
-            if (Potion_cd <= diff && GetManaPCT(me) < 33)
+            if (GetManaPCT(me) < 33 && Potion_cd <= diff)
             {
                 temptimer = GC_Timer;
                 if (doCast(me, MANAPOTION))
@@ -207,7 +199,7 @@ public:
             //buff and heal master's group
             MassGroupHeal(master, diff);
             BuffAndHealGroup(master, diff);
-            CureGroup(master, GetSpell(DISPEL_MAGIC_1), diff);
+            CureGroup(master, DISPELMAGIC, diff);
             //ShieldGroup(master);
             if (master->IsInCombat() || me->IsInCombat())
             {
@@ -222,7 +214,7 @@ public:
                 DoNonCombatActions(diff);
             }
 
-            if (!CheckAttackTarget(BOT_CLASS_PRIEST))
+            if (!CheckAttackTarget(CLASS_PRIEST))
                 return;
 
             AttackerSet m_attackers = master->getAttackers();
@@ -247,7 +239,10 @@ public:
                     if (IsSpellReady(SW_DEATH_1, diff, false) && Rand() < 50 &&
                         (GetHealthPCT(opponent) < 15 || opponent->GetHealth() < me->GetMaxHealth()/6) &&
                         doCast(opponent, GetSpell(SW_DEATH_1)))
+                    {
+                        SetSpellCooldown(SW_DEATH_1, 8000);
                         return;
+                    }
                     if (IsSpellReady(SW_PAIN_1, diff) && Rand() < 25 &&
                         opponent->GetHealth() > me->GetMaxHealth()/4 &&
                         !HasAuraName(opponent, SW_PAIN_1, me->GetGUID()) &&
@@ -266,13 +261,19 @@ public:
                     if (IsSpellReady(MIND_BLAST_1, diff) && Rand() < 35 &&
                         (!GetSpell(VAMPIRIC_TOUCH_1) || HasAuraName(opponent, VAMPIRIC_TOUCH_1, me->GetGUID())) &&
                         doCast(opponent, GetSpell(MIND_BLAST_1)))
+                    {
+                        SetSpellCooldown(MIND_BLAST_1, 6000);
                         return;
-                    if (IsSpellReady(MIND_FLAY_1, diff, false) && Rand() < 20 &&
+                    }
+                    if (IsSpellReady(MIND_FLAY_1, diff, false) && !me->isMoving() && Rand() < 20 &&
                         (opponent->isMoving() || opponent->GetHealth() < me->GetMaxHealth()/5 ||
                         (HasAuraName(opponent, SW_PAIN_1, me->GetGUID()) && HasAuraName(opponent, DEVOURING_PLAGUE_1, me->GetGUID()))) &&
                         doCast(opponent, GetSpell(MIND_FLAY_1)))
+                    {
+                        SetSpellCooldown(MIND_FLAY_1, 2500);
                         return;
-                    if (IsSpellReady(MIND_SEAR_1, diff, false) && !opponent->isMoving() && dist < 35 && Rand() < 50 &&
+                    }
+                    if (IsSpellReady(MIND_SEAR_1, diff, false) && !me->isMoving() && !opponent->isMoving() && dist < 35 && Rand() < 50 &&
                         HasAuraName(opponent, SW_PAIN_1, me->GetGUID()) &&
                         HasAuraName(opponent, DEVOURING_PLAGUE_1, me->GetGUID()))
                     {
@@ -289,7 +290,10 @@ public:
                 me->GetExactDist(opponent) < 30 && !HasAuraName(opponent, PSYCHIC_HORROR_1))
             {
                 if (doCast(opponent, GetSpell(PSYCHIC_HORROR_1)))
+                {
+                    SetSpellCooldown(PSYCHIC_HORROR_1, 60000);
                     return;
+                }
             }
         }//end UpdateAI
 
@@ -305,9 +309,9 @@ public:
                 return false;
 
             //GUARDIAN SPIRIT
-            if (IsSpellReady(GUARDIAN_SPIRIT_1, diff, false) && !IAmFree() && target->IsInCombat() &&
+            if (IsSpellReady(GUARDIAN_SPIRIT_1, diff, false) && target->IsInCombat() &&
                 !target->getAttackers().empty() && hp < (5 + std::min(20, uint8(target->getAttackers().size())*5)) &&
-                IsInBotParty(target) &&
+                ((master->GetGroup() && master->GetGroup()->IsMember(target->GetGUID())) || target == master) &&
                 Rand() < 80 && !target->HasAura(GetSpell(GUARDIAN_SPIRIT_1)))
             {
                 temptimer = GC_Timer;
@@ -317,12 +321,16 @@ public:
                 {
                     GC_Timer = temptimer;
                     if (target->GetTypeId() == TYPEID_PLAYER)
-                        BotWhisper("Guardian Spirit on you!", target->ToPlayer());
-                    else if (!IAmFree())
+                    {
+                        me->MonsterWhisper("Guardian Spirit on you!", target->ToPlayer());
+                        SetSpellCooldown(GUARDIAN_SPIRIT_1, 90000); //1.5 min
+                    }
+                    else
                     {
                         std::ostringstream msg;
                         msg << "Guardian Spirit on " << (target == me ? "myself" : target->GetName()) << '!';
-                        BotWhisper(msg.str().c_str(), master);
+                        me->MonsterWhisper(msg.str().c_str(), master);
+                        SetSpellCooldown(GUARDIAN_SPIRIT_1, 30000); //30 sec for creatures
                     }
 
                     return true;
@@ -343,12 +351,16 @@ public:
                 {
                     GC_Timer = temptimer;
                     if (target->GetTypeId() == TYPEID_PLAYER)
-                        BotWhisper("Pain Suppression on you!", target->ToPlayer());
-                    else if (!IAmFree())
+                    {
+                        me->MonsterWhisper("Pain Suppression on you!", target->ToPlayer());
+                        SetSpellCooldown(PAIN_SUPPRESSION_1, 60000); //60 sec
+                    }
+                    else
                     {
                         std::ostringstream msg;
                         msg << "Guardin Spirit on " << (target == me ? "myself" : target->GetName()) << '!';
-                        BotWhisper(msg.str().c_str(), master);
+                        me->MonsterWhisper(msg.str().c_str(), master);
+                        SetSpellCooldown(PAIN_SUPPRESSION_1, 15000); //15 sec for creatures
                     }
 
                     return true;
@@ -367,7 +379,10 @@ public:
                     (target->GetTypeId() != TYPEID_PLAYER ||
                     !(target->ToPlayer()->IsCharmed() || target->ToPlayer()->isPossessed())) &&
                     doCast(target, GetSpell(PENANCE_1)))
+                {
+                    SetSpellCooldown(PENANCE_1, 8000);
                     return true;
+                }
                 else if (HEAL && Heal_Timer <= diff && GC_Timer <= diff && hp > 50 && Rand() < 70 &&
                     doCast(target, HEAL))
                 {
@@ -403,10 +418,10 @@ public:
                 GC_Timer > diff || me->GetExactDist(target) > 30 || Rand() > 20)
                 return false;
 
-            if (IsSpellReady(FEAR_WARD_1, diff, false) &&
-                !target->HasAuraTypeWithMiscvalue(SPELL_AURA_MECHANIC_IMMUNITY, MECHANIC_FEAR) &&
+            if (IsSpellReady(FEAR_WARD_1, false) && !target->HasAura(GetSpell(FEAR_WARD_1)) &&
                 doCast(target, GetSpell(FEAR_WARD_1)))
             {
+                SetSpellCooldown(FEAR_WARD_1, target->GetTypeId() == TYPEID_PLAYER ? 60000 : 30000); //30sec for bots
                 GC_Timer = 800;
                 return true;
             }
@@ -464,7 +479,7 @@ public:
 
         void DoNonCombatActions(uint32 diff)
         {
-            if (GC_Timer > diff || me->IsMounted() || IsCasting())
+            if (GC_Timer > diff || me->IsMounted() || Rand() > 50)
                 return;
 
             RezGroup(GetSpell(REBIRTH_1), master);
@@ -480,27 +495,14 @@ public:
 
         void CheckDispel(uint32 diff)
         {
-            if (CheckDispelTimer > diff || Rand() > 25 || IsCasting())
+            if (!DISPELMAGIC || CheckDispelTimer > diff || Rand() > 25 || IsCasting())
                 return;
 
-            uint32 DM = GetSpell(DISPEL_MAGIC_1);
-			uint32 MD = GetSpell(DISPEL_MAGIC_1);
+            Unit* target = FindHostileDispelTarget();
+            if (target && doCast(target, DISPELMAGIC))
+                CheckDispelTimer = 1000;
 
-            if (!DM && !MD)
-                return;
-
-            if (Unit* target = FindHostileDispelTarget())
-            {
-                uint32 dm = DM && !target->IsImmunedToSpell(sSpellMgr->GetSpellInfo(DM)) ? DM : MD;
-                if (target && doCast(target, dm))
-                {
-                    CheckDispelTimer = 1000;
-                    GC_Timer = 800;
-                    return;
-                }
-            }
-
-            CheckDispelTimer = 2000; //fail
+            CheckDispelTimer = 3000; //fail
         }
 
         void CheckShackles(uint32 diff)
@@ -530,13 +532,13 @@ public:
             {
                 if (Unit* target = FindCastingTarget(30))
                     if (doCast(target, GetSpell(SILENCE_1)))
-                    {}
+                        SetSpellCooldown(SILENCE_1, 30000);
             }
             else if (IsSpellReady(PSYCHIC_HORROR_1, diff, false, 20000))
             {
                 if (Unit* target = FindCastingTarget(30))
                     if (doCast(target, GetSpell(PSYCHIC_HORROR_1)))
-                    {}
+                        SetSpellCooldown(PSYCHIC_HORROR_1, 60000);
             }
             GC_Timer = temptimer;
         }
@@ -562,7 +564,10 @@ public:
                             ++tCount;
                     }
                     if (tCount > 1 && doCast(me, GetSpell(PSYCHIC_SCREAM_1)))
+                    {
+                        SetSpellCooldown(PSYCHIC_SCREAM_1, 22000);
                         return;
+                    }
                 }
 
                 // Defend myself (psychic horror)
@@ -579,7 +584,10 @@ public:
                             ++tCount;
                     }
                     if (tCount > 0 && doCast(me, GetSpell(PSYCHIC_SCREAM_1)))
+                    {
+                        SetSpellCooldown(PSYCHIC_SCREAM_1, 22000);
                         return;
+                    }
                 }
             }
             // Heal myself
@@ -608,6 +616,7 @@ public:
                             for (AttackerSet::iterator iter = b_attackers.begin(); iter != b_attackers.end(); ++iter)
                                 if ((*iter)->getThreatManager().getThreat(me) > 0.f)
                                     (*iter)->getThreatManager().modifyThreatPercent(me, -50);
+                            SetSpellCooldown(FADE_1, 10000);
                             GC_Timer = temptimer;
                             return;
                         }
@@ -638,7 +647,7 @@ public:
             {
                 temptimer = GC_Timer;
                 if (doCast(me, GetSpell(DISPERSION_1)))
-                {}
+                    SetSpellCooldown(DISPERSION_1, 60000);
                 GC_Timer = temptimer;
                 return;
             }
@@ -648,7 +657,7 @@ public:
 
         void CheckBattleRez(uint32 diff)
         {
-            if (!IsSpellReady(REBIRTH_1, diff, false) || IAmFree() || me->IsMounted() || IsCasting() || Rand() > 10) return;
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
 
             Group* gr = master->GetGroup();
             if (!gr)
@@ -670,7 +679,7 @@ public:
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                    BotWhisper("Rezzing You", master);
+					me->MonsterWhisper("Rezzing You", master);
 
                 return;
             }
@@ -695,13 +704,12 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    BotWhisper("Rezzing You", tPlayer);
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
         }
-
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool& crit) const
+        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool& crit) const
         {
             uint32 spellId = spellInfo->Id;
             uint8 lvl = me->getLevel();
@@ -729,19 +737,14 @@ public:
                 //else if (lvl >= 15 && (SPELL_SCHOOL_MASK_FROST & spellInfo->GetSchoolMask()))
                 //    pctbonus += 0.333f;
             }
-            //Focused Power: 4% bonus damage for all spells
-            if (lvl >= 35)
-                pctbonus += 0.04f;
-            //Darkness: 10% bonus damage for shadow spells
-            if (lvl >= 10 && (spellInfo->GetSchoolMask() & SPELL_SCHOOL_MASK_SHADOW))
-                pctbonus += 0.1f;
-            //Twin Disciplines (damage part): 5% bonus damage for instant spells
-            if (lvl >= 13 && !spellInfo->CalcCastTime())
-                pctbonus += 0.05f;
-            //Twisted Faith (part 1): 10% bonus damage for Mind Blast and Mind Flay if target is affected BY SW: Pain
-            if (lvl >= 55 && (spellId == GetSpell(SW_PAIN_1) || spellId == GetSpell(MIND_FLAY_1)) &&
-                damageinfo.target && damageinfo.target->HasAura(GetSpell(SW_PAIN_1), me->GetGUID()))
-                pctbonus += 0.1f;
+            //Twin Disciplines (damage part): 6% bonus damage for shadow and holy spells
+            if (lvl >= 13)
+                if ((SPELL_SCHOOL_MASK_HOLY & spellInfo->GetSchoolMask()) ||
+                    (SPELL_SCHOOL_MASK_SHADOW & spellInfo->GetSchoolMask()))
+                    pctbonus += 0.06f;
+            //Twisted Faith (part 1): 2% bonus damage for shadow spells
+            if (lvl >= 21 && (SPELL_SCHOOL_MASK_SHADOW & spellInfo->GetSchoolMask()))
+                pctbonus += 0.02f;
             //Mind Melt (part 1): 30% bonus damage for Shadow Word: Death
             if (lvl >= 41 && spellId == GetSpell(SW_DEATH_1))
                 pctbonus += 0.3f;
@@ -753,9 +756,9 @@ public:
             //other
             if (spellId == SW_DEATH_BACKLASH)
             {
-                ////T13 Shadow 2P Bonus (Shadow Word: Death), part 2
-                //if (lvl >= 60) //buffed
-                //    pctbonus -= 0.95f;
+                //T13 Shadow 2P Bonus (Shadow Word: Death), part 2
+                if (lvl >= 60) //buffed
+                    pctbonus -= 0.95f;
                 //Pain and Suffering (part 2): 40% reduced backlash damage
                 if (lvl >= 50)
                     pctbonus -= 0.4f;
@@ -766,86 +769,24 @@ public:
             damage = int32(fdamage * (1.0f + pctbonus));
         }
 
-        void ApplyClassDamageMultiplierHeal(Unit const* victim, float& heal, SpellInfo const* spellInfo, DamageEffectType damagetype, uint32 stack) const
-        {
-            uint32 spellId = spellInfo->Id;
-            uint8 lvl = me->getLevel();
-            float pctbonus = 0.0f;
-            float flat_mod = 0.0f;
-
-            //Improved Renew: 15% bonus healing for Renew
-            if (lvl >= 10 && spellId == GetSpell(RENEW_1))
-                pctbonus += 0.15f;
-            //Spiritual Healing: 10% bonus healing for all spells
-            if (lvl >= 35)
-                pctbonus += 0.15f;
-            //Blessend Resilience: 3% bonus healing for all spells
-            if (lvl >= 40)
-                pctbonus += 0.03f;
-            //Empowered Healing: 40% bonus (from spellpower) for Greater Heal and 20% bonus (from spellpower) for Flash Heal
-            if (lvl >= 45)
-            {
-                if (spellId == HEAL)
-                    flat_mod += spellpower * 0.4f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * stack * 1.88f * me->CalculateLevelPenalty(spellInfo) * stack;
-                else if (spellId == GetSpell(FLASH_HEAL_1))
-                    flat_mod += spellpower * 0.2f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * stack * 1.88f * me->CalculateLevelPenalty(spellInfo) * stack;
-            }
-            //Impowered Renew (heal bonus part): 15% bonus healing for Renew
-            if (lvl >= 50 && spellId == GetSpell(RENEW_1))
-                flat_mod += spellpower *  0.15f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * int32(stack) * 1.88f * me->CalculateLevelPenalty(spellInfo) * stack;
-            //Test of Faith: 12% bonus healing on targets at or below 50% health
-            if (lvl >= 50 && GetHealthPCT(victim) <= 50)
-                pctbonus += 0.12f;
-            //Test of Faith: 10 bonus healing for Circle of Healing, Binding Heal, Holy Nova, Prayer of Healing, Divine Hymn and Prayer of Mending
-            if (lvl >= 55 &&
-                (/*spellId == GetSpell(CIRCLE_OF_HEALING_1) || spellId == GetSpell(BINDING_HEAL_1) ||
-                spellId == GetSpell(HOLY_NOVA_1) || */spellId == GetSpell(PRAYER_OF_HEALING_1) ||
-                spellId == DIVINE_HYMN_HEAL/* || spellId == GetSpell(PRAYER_OF_MENDING_1)*/))
-                pctbonus += 0.12f;
-
-            heal = heal * (1.0f + pctbonus) + flat_mod;
-        }
-
-        void ApplyClassCritMultiplierHeal(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType /*attackType*/) const
-        {
-            uint32 spellId = spellInfo->Id;
-            uint8 lvl = me->getLevel();
-            float aftercrit = 0.0f;
-
-            //Improved Flash Heal (part 2): 10% additional critical chance on targets at or below 50% hp for Flash Heal
-            if (lvl >= 40 && spellId == GetSpell(FLASH_HEAL_1) && GetHealthPCT(victim) <= 50)
-                aftercrit += 10.f;
-            //Holy Specialization: 5% additional critical chance for Holy spells
-            if (lvl >= 10 && (schoolMask & SPELL_SCHOOL_MASK_HOLY))
-                aftercrit += 5.f;
-
-            crit_chance += aftercrit;
-        }
-
         void SpellHitTarget(Unit* target, SpellInfo const* spell)
         {
             uint32 spellId = spell->Id;
 
-            ////Strength of Soul: direct heals reduce Weakened Soul duration on target by 4 sec
-            //if (spellId == HEAL || spellId == GetSpell(FLASH_HEAL_1))
-            //{
-            //    if (me->getLevel() >= 51)
-            //    {
-            //        if (Aura* soul = target->GetAura(WEAKENED_SOUL_DEBUFF))
-            //        {
-            //            if (soul->GetDuration() > 4000)
-            //                soul->SetDuration(soul->GetDuration() - 4000);
-            //            else
-            //                target->RemoveAura(soul, AURA_REMOVE_BY_EXPIRE);
-            //        }
-            //    }
-            //}
-
-            //Weakened Soul Reduction (id: 33333 lol): -2 sec to Weakened Soul duration
-            if (spellId == WEAKENED_SOUL_DEBUFF)
+            //Strength of Soul: direct heals reduce Weakened Soul duration on target by 4 sec
+            if (spellId == HEAL || spellId == GetSpell(FLASH_HEAL_1))
+            {
                 if (me->getLevel() >= 51)
+                {
                     if (Aura* soul = target->GetAura(WEAKENED_SOUL_DEBUFF))
-                        soul->SetDuration(soul->GetDuration() - 2000);
+                    {
+                        if (soul->GetDuration() > 4000)
+                            soul->SetDuration(soul->GetDuration() - 4000);
+                        else
+                            target->RemoveAura(soul, AURA_REMOVE_BY_EXPIRE);
+                    }
+                }
+            }
 
             //Pain and Suffering (part 1, 335 version): 100% to refresh Shadow Word: Pain on target hit by Mind Flay
             if (spellId == GetSpell(MIND_FLAY_1))
@@ -882,15 +823,29 @@ public:
             OnSpellHit(caster, spell);
         }
 
-        void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType)
+        void DamageDealt(Unit* victim, uint32& /*damage*/, DamageEffectType damageType)
         {
-            bot_ai::DamageDealt(victim, damage, damageType);
+            if (victim == me)
+                return;
+
+            if (damageType == DIRECT_DAMAGE || damageType == SPELL_DIRECT_DAMAGE)
+            {
+                for (uint8 i = 0; i != MAX_BOT_CTC_SPELLS; ++i)
+                {
+                    if (_ctc[i].first && !_ctc[i].second)
+                    {
+                        if (urand(1,100) <= CalcCTC(_ctc[i].first))
+                            _ctc[i].second = 1000;
+
+                        if (_ctc[i].second > 0)
+                            me->CastSpell(victim, _ctc[i].first, true);
+                    }
+                }
+            }
         }
 
         void DamageTaken(Unit* u, uint32& /*damage*/)
         {
-            if (!u->IsInCombat() && !me->IsInCombat())
-                return;
             OnOwnerDamagedBy(u);
         }
 
@@ -909,17 +864,28 @@ public:
 
             Devcheck = false;
 
-            DefaultInit();
+            if (master)
+            {
+                SetStats(true);
+                InitRoles();
+                ApplyPassives(CLASS_PRIEST);
+            }
         }
 
         void ReduceCD(uint32 diff)
         {
+            CommonTimers(diff);
+            SpellTimers(diff);
+
             if (Heal_Timer > diff)                  Heal_Timer -= diff;
             if (Shackle_Timer > diff)               Shackle_Timer -= diff;
 
             if (CheckDispelTimer > diff)            CheckDispelTimer -= diff;
             if (DevcheckTimer > diff)               DevcheckTimer -= diff;
         }
+
+        bool CanRespawn()
+        {return false;}
 
         void InitSpells()
         {
@@ -938,9 +904,7 @@ public:
             InitSpellMap(MIND_SEAR_1);
   /*Talent*/lvl >= 60 ? InitSpellMap(GUARDIAN_SPIRIT_1) : RemoveSpell(GUARDIAN_SPIRIT_1);
             InitSpellMap(SHACKLE_UNDEAD_1);
-            InitSpellMap(GREATER_HEAL_1);
-            InitSpellMap(NORMAL_HEAL_1);
-            InitSpellMap(LESSER_HEAL_1);
+            HEAL = lvl >= 40 ? InitSpell(me, GREATER_HEAL_1) : lvl >= 16 ? InitSpell(me, NORMAL_HEAL_1) : InitSpell(me, LESSER_HEAL_1);
             InitSpellMap(RENEW_1);
             InitSpellMap(FLASH_HEAL_1);
             InitSpellMap(PRAYER_OF_HEALING_1);
@@ -957,43 +921,59 @@ public:
             InitSpellMap(DEVOURING_PLAGUE_1);
   /*Talent*/lvl >= 20 ? InitSpellMap(MIND_FLAY_1) : RemoveSpell(MIND_FLAY_1);
   /*Talent*/lvl >= 50 ? InitSpellMap(VAMPIRIC_TOUCH_1) : RemoveSpell(VAMPIRIC_TOUCH_1);
-
-            HEAL = GetSpell(GREATER_HEAL_1) ? GetSpell(GREATER_HEAL_1) :
-                GetSpell(NORMAL_HEAL_1) ? GetSpell(NORMAL_HEAL_1) :
-                GetSpell(LESSER_HEAL_1);
         }
-
         void ApplyClassPassives()
         {
             uint8 level = master->getLevel();
-
-            RefreshAura(BORROWED_TIME, level >= 65 ? 1 : 0);
-            RefreshAura(DIVINE_AEGIS, level >= 55 ? 1 : 0);
-            RefreshAura(EMPOWERED_RENEW3, level >= 55 ? 1 : 0);
-            RefreshAura(EMPOWERED_RENEW2, level >= 50 && level < 55 ? 1 : 0);
-            RefreshAura(EMPOWERED_RENEW1, level >= 45 && level < 50 ? 1 : 0);
-            RefreshAura(BODY_AND_SOUL1, level >= 45 ? 1 : 0);
-            RefreshAura(RENEWED_HOPE, level >= 45 ? 1 : 0);
-            RefreshAura(PAINANDSUFFERING3, level >= 50 ? 1 : 0);
-            RefreshAura(PAINANDSUFFERING2, level >= 48 && level < 50 ? 1 : 0);
-            RefreshAura(PAINANDSUFFERING1, level >= 45 && level < 48 ? 1 : 0);
-            RefreshAura(MISERY3, level >= 50 ? 1 : 0);
-            RefreshAura(MISERY2, level >= 48 && level < 50 ? 1 : 0);
-            RefreshAura(MISERY1, level >= 45 && level < 48 ? 1 : 0);
-            RefreshAura(GRACE, level >= 25 ? 1 : 0);
-            RefreshAura(ENLIGHTENMENT, level >= 35 ? 1 : 0);
-            RefreshAura(RAPTURE, level >= 45 ? 1 : 0);
-            RefreshAura(IMPROVED_DEVOURING_PLAGUE, level >= 25 ? 1 : 0);
-            RefreshAura(INSPIRATION3, level >= 25 ? 1 : 0);
-            RefreshAura(INSPIRATION2, level >= 23 && level < 25 ? 1 : 0);
-            RefreshAura(INSPIRATION1, level >= 20 && level < 23 ? 1 : 0);
-            RefreshAura(SHADOW_WEAVING3, level >= 30 ? 1 : 0);
-            RefreshAura(SHADOW_WEAVING2, level >= 28 && level < 30 ? 1 : 0);
-            RefreshAura(SHADOW_WEAVING1, level >= 25 && level < 28 ? 1 : 0);
-            RefreshAura(GLYPH_SW_PAIN, level >= 15? 1 : 0);
-            RefreshAura(GLYPH_PW_SHIELD, level >= 15 ? 1 : 0);
-            RefreshAura(SHADOWFORM, level >= 40 ? 1 : 0);
-            RefreshAura(PRIEST_T10_2P_BONUS, level >= 70 ? 1 : 0);
+            if (level >= 65)
+                RefreshAura(BORROWED_TIME); //25%haste/40%bonus
+            if (level >= 55)
+                RefreshAura(DIVINE_AEGIS); //30%
+            if (level >= 55)
+                RefreshAura(EMPOWERED_RENEW3); //15%
+            else if (level >= 50)
+                RefreshAura(EMPOWERED_RENEW2); //10%
+            else if (level >= 45)
+                RefreshAura(EMPOWERED_RENEW1); //5%
+            if (level >= 45)
+                RefreshAura(BODY_AND_SOUL1); //30%
+            if (level >= 50)
+                RefreshAura(PAINANDSUFFERING3); //100%
+            else if (level >= 48)
+                RefreshAura(PAINANDSUFFERING2); //66%
+            else if (level >= 45)
+                RefreshAura(PAINANDSUFFERING1); //33%
+            if (level >= 50)
+                RefreshAura(MISERY3); //3%
+            else if (level >= 48)
+                RefreshAura(MISERY2); //2%
+            else if (level >= 45)
+                RefreshAura(MISERY1); //1%
+            if (level >= 45)
+                RefreshAura(GRACE); //100%
+            if (level >= 35)
+                RefreshAura(IMPROVED_DEVOURING_PLAGUE); //30%
+            if (level >= 25)
+                RefreshAura(INSPIRATION3); //10%
+            else if (level >= 23)
+                RefreshAura(INSPIRATION2); //6%
+            else if (level >= 20)
+                RefreshAura(INSPIRATION1); //3%
+            if (level >= 30)
+                RefreshAura(SHADOW_WEAVING3); //100%
+            else if (level >= 28)
+                RefreshAura(SHADOW_WEAVING2); //66%
+            else if (level >= 25)
+                RefreshAura(SHADOW_WEAVING1); //33%
+            if (level >= 15)
+            {
+                RefreshAura(GLYPH_SW_PAIN);
+                RefreshAura(GLYPH_PW_SHIELD); //20% heal
+            }
+            if (level >= 40)
+                RefreshAura(SHADOWFORM); //allows dots to crit, passive
+            if (level >= 70)
+                RefreshAura(PRIEST_T10_2P_BONUS);
         }
 
         bool CanUseManually(uint32 basespell) const
@@ -1027,7 +1007,7 @@ public:
         }
 
     private:
-        uint32 HEAL;
+        uint32 DISPELMAGIC, HEAL;
         uint32 Heal_Timer, Shackle_Timer;
 /*Misc*/uint16 CheckDispelTimer, DevcheckTimer;
 /*Misc*/bool Devcheck;
@@ -1093,9 +1073,6 @@ public:
             INSPIRATION2                    = 15362,
             INSPIRATION3                    = 15363,
             BODY_AND_SOUL1                  = 64127,
-            RENEWED_HOPE                    = 57472,//rank 3
-            ENLIGHTENMENT                   = 34910,//rank 3
-            RAPTURE                         = 47537,//rank 3
         //Glyphs
             GLYPH_SW_PAIN                   = 55681,
             GLYPH_PW_SHIELD                 = 55672,
@@ -1107,8 +1084,7 @@ public:
             IMPROVED_DEVOURING_PLAGUE_DAMAGE= 63675,
             MIND_SEAR_DAMAGE                = 49821,
             SW_DEATH_BACKLASH               = 32409,
-            WEAKENED_SOUL_DEBUFF            = 6788,
-            DIVINE_HYMN_HEAL                = 64844
+            WEAKENED_SOUL_DEBUFF            = 6788
         };
     };
 };

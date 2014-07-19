@@ -6,6 +6,7 @@
 #define SC_SYSTEM_H
 
 #include "ScriptMgr.h"
+#include <ace/Singleton.h>
 
 #define TEXT_SOURCE_RANGE -1000000                          //the amount of entries each text source has available
 
@@ -47,17 +48,11 @@ typedef std::vector<ScriptPointMove> ScriptPointVector;
 
 class SystemMgr
 {
-    private:
+        friend class ACE_Singleton<SystemMgr, ACE_Null_Mutex>;
         SystemMgr() { }
         ~SystemMgr() { }
 
     public:
-        static SystemMgr* instance()
-        {
-            static SystemMgr* instance = new SystemMgr();
-            return instance;
-        }
-
         typedef std::unordered_map<uint32, ScriptPointVector> PointMoveMap;
 
         //Database
@@ -80,6 +75,6 @@ class SystemMgr
         static ScriptPointVector const _empty;
 };
 
-#define sScriptSystemMgr SystemMgr::instance()
+#define sScriptSystemMgr ACE_Singleton<SystemMgr, ACE_Null_Mutex>::instance()
 
 #endif

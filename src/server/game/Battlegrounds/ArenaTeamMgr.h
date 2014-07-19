@@ -22,17 +22,11 @@
 
 class ArenaTeamMgr
 {
-private:
+    friend class ACE_Singleton<ArenaTeamMgr, ACE_Null_Mutex>;
     ArenaTeamMgr();
     ~ArenaTeamMgr();
 
 public:
-    static ArenaTeamMgr* instance()
-    {
-        static ArenaTeamMgr* instance = new ArenaTeamMgr();
-        return instance;
-    }
-
     typedef std::unordered_map<uint32, ArenaTeam*> ArenaTeamContainer;
 
     ArenaTeam* GetArenaTeamById(uint32 arenaTeamId) const;
@@ -56,6 +50,6 @@ protected:
     ArenaTeamContainer ArenaTeamStore;
 };
 
-#define sArenaTeamMgr ArenaTeamMgr::instance()
+#define sArenaTeamMgr ACE_Singleton<ArenaTeamMgr, ACE_Null_Mutex>::instance()
 
 #endif

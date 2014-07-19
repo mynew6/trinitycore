@@ -201,7 +201,7 @@ public:
 
         bool WasWrapped(uint64 guid)
         {
-            return lWrappedPlayers.count(guid) != 0;
+            return lWrappedPlayers.count(guid);
         }
     };
 

@@ -1538,6 +1538,8 @@ void Spell::SelectImplicitTrajTargets(SpellEffIndex effIndex)
             }
         }
 
+                continue;
+
         const float size = std::max((*itr)->GetObjectSize() * 0.7f, 1.0f); // 1/sqrt(3)
         /// @todo all calculation should be based on src instead of m_caster
         const float objDist2d = m_targets.GetSrcPos()->GetExactDist2d(*itr) * std::cos(m_targets.GetSrcPos()->GetRelativeAngle(*itr));
@@ -1764,8 +1766,8 @@ void Spell::SearchTargets(SEARCHER& searcher, uint32 containerMask, Unit* refere
         return;
 
     // search world and grid for possible targets
-    bool searchInGrid = (containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_GAMEOBJECT)) != 0;
-    bool searchInWorld = (containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_PLAYER | GRID_MAP_TYPE_MASK_CORPSE)) != 0;
+    bool searchInGrid = containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_GAMEOBJECT);
+    bool searchInWorld = containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_PLAYER | GRID_MAP_TYPE_MASK_CORPSE);
     if (searchInGrid || searchInWorld)
     {
         float x, y;
@@ -2394,13 +2396,6 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
             if (caster->GetTypeId() == TYPEID_PLAYER && (m_spellInfo->Attributes & SPELL_ATTR0_STOP_ATTACK_TARGET) == 0 &&
                (m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MELEE || m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_RANGED))
                 caster->ToPlayer()->CastItemCombatSpell(unitTarget, m_attackType, procVictim, procEx);
-
-                //npcbot - CastItemCombatSpell for bots
-            if (caster->GetTypeId() == TYPEID_UNIT &&
-                caster->ToCreature()->GetBotAI() && !(m_spellInfo->Attributes & SPELL_ATTR0_STOP_ATTACK_TARGET) &&
-               (m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MELEE || m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_RANGED))
-               caster->ToCreature()->CastCreatureItemCombatSpell(unitTarget, m_attackType, procVictim, procEx, this);
-            //end npcbot
         }
 
 
@@ -2550,7 +2545,7 @@ SpellMissInfo Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, bool scaleA
             aura_effmask |= 1 << i;
 
     // Get Data Needed for Diminishing Returns, some effects may have multiple auras, so this must be done on spell hit, not aura add
-    m_diminishGroup = GetDiminishingReturnsGroupForSpell(m_spellInfo, m_triggeredByAuraSpell != nullptr);
+    m_diminishGroup = GetDiminishingReturnsGroupForSpell(m_spellInfo, m_triggeredByAuraSpell);
     if (m_diminishGroup && aura_effmask)
     {
         m_diminishLevel = unit->GetDiminishing(m_diminishGroup);
@@ -3152,11 +3147,6 @@ void Spell::cast(bool skipCheck)
         return;
     }
 
-    //NpcBot: If we are applying crowd control aura execute caster's delayed attack immediately to prevent instant CC break
-    if (m_targets.GetUnitTarget() && (m_spellInfo->AuraInterruptFlags & AURA_INTERRUPT_FLAG_TAKE_DAMAGE))
-        m_caster->ExecuteDelayedSwingHit();
-    //end NpcBot
-
     PrepareTriggersExecutedOnHit();
 
     CallScriptOnCastHandlers();
@@ -3613,9 +3603,6 @@ void Spell::finish(bool ok)
 
     // Stop Attack for some spells
     if (m_spellInfo->Attributes & SPELL_ATTR0_STOP_ATTACK_TARGET)
-    //npcbot - disable for npcbots
-    if (!(m_caster->GetTypeId() == TYPEID_UNIT && m_caster->ToCreature()->GetBotAI()))
-    //end npcbot
         m_caster->AttackStop();
 }
 
@@ -3821,11 +3808,6 @@ void Spell::SendSpellStart()
 
 void Spell::SendSpellGo()
 {
-    //npcbot - hook for spellcast finish
-    if (m_caster->GetTypeId() == TYPEID_UNIT && m_caster->ToCreature()->GetBotAI())
-        m_caster->ToCreature()->OnSpellGo(this);
-    //end npcbot
-
     // not send invisible spell casting
     if (!IsNeedSendToClient())
         return;
@@ -5540,7 +5522,7 @@ SpellCastResult Spell::CheckCasterAuras() const
             mechanic_immune = IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK;
     }
 
-    bool usableInStun = (m_spellInfo->AttributesEx5 & SPELL_ATTR5_USABLE_WHILE_STUNNED) != 0;
+    bool usableInStun = m_spellInfo->AttributesEx5 & SPELL_ATTR5_USABLE_WHILE_STUNNED;
 
     // Glyph of Pain Suppression
     // there is no other way to handle it
@@ -6496,7 +6478,7 @@ bool Spell::CheckEffectTarget(Unit const* target, uint32 eff) const
 
 bool Spell::IsNextMeleeSwingSpell() const
 {
-    return (m_spellInfo->Attributes & SPELL_ATTR0_ON_NEXT_SWING) != 0;
+    return m_spellInfo->Attributes & SPELL_ATTR0_ON_NEXT_SWING;
 }
 
 bool Spell::IsAutoActionResetSpell() const
@@ -6546,7 +6528,7 @@ SpellEvent::~SpellEvent()
     {
         TC_LOG_ERROR("spells", "~SpellEvent: %s %u tried to delete non-deletable spell %u. Was not deleted, causes memory leak.",
             (m_Spell->GetCaster()->GetTypeId() == TYPEID_PLAYER ? "Player" : "Creature"), m_Spell->GetCaster()->GetGUIDLow(), m_Spell->m_spellInfo->Id);
-        //ASSERT(false);
+        ASSERT(false);
     }
 }
 
@@ -6675,7 +6657,7 @@ void Spell::HandleLaunchPhase()
         if (m_applyMultiplierMask & (1 << i))
             multiplier[i] = m_spellInfo->Effects[i].CalcDamageMultiplier(m_originalCaster, this);
 
-    bool usesAmmo = (m_spellInfo->AttributesCu & SPELL_ATTR0_CU_DIRECT_DAMAGE) != 0;
+    bool usesAmmo = m_spellInfo->AttributesCu & SPELL_ATTR0_CU_DIRECT_DAMAGE;
     Unit::AuraEffectList const& Auras = m_caster->GetAuraEffectsByType(SPELL_AURA_ABILITY_CONSUME_NO_AMMO);
     for (Unit::AuraEffectList::const_iterator j = Auras.begin(); j != Auras.end(); ++j)
     {

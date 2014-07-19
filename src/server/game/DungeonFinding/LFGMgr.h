@@ -18,6 +18,7 @@
 #ifndef _LFGMGR_H
 #define _LFGMGR_H
 
+#include <ace/Singleton.h>
 #include "DBCStructure.h"
 #include "Field.h"
 #include "LFG.h"
@@ -270,7 +271,7 @@ struct LFGDungeonData
     LFGDungeonData(LFGDungeonEntry const* dbc): id(dbc->ID), name(dbc->name[0]), map(dbc->map),
         type(dbc->type), expansion(dbc->expansion), group(dbc->grouptype),
         minlevel(dbc->minlevel), maxlevel(dbc->maxlevel), difficulty(Difficulty(dbc->difficulty)),
-        seasonal((dbc->flags & LFG_FLAG_SEASONAL) != 0), x(0.0f), y(0.0f), z(0.0f), o(0.0f)
+        seasonal(dbc->flags & LFG_FLAG_SEASONAL), x(0.0f), y(0.0f), z(0.0f), o(0.0f)
         { }
 
     uint32 id;
@@ -291,17 +292,13 @@ struct LFGDungeonData
 
 class LFGMgr
 {
+    friend class ACE_Singleton<LFGMgr, ACE_Null_Mutex>;
+
     private:
         LFGMgr();
         ~LFGMgr();
 
     public:
-        static LFGMgr* instance()
-        {
-            static LFGMgr* instance = new LFGMgr();
-            return instance;
-        }
-
         // Functions used outside lfg namespace
         void Update(uint32 diff);
 
@@ -469,5 +466,5 @@ class LFGMgr
 
 } // namespace lfg
 
-#define sLFGMgr lfg::LFGMgr::instance()
+#define sLFGMgr ACE_Singleton<lfg::LFGMgr, ACE_Null_Mutex>::instance()
 #endif

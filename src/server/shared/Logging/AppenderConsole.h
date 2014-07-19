@@ -18,8 +18,8 @@
 #ifndef APPENDERCONSOLE_H
 #define APPENDERCONSOLE_H
 
-#include <string>
 #include "Appender.h"
+#include <string>
 
 enum ColorTypes
 {

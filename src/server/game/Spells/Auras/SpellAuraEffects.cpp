@@ -1669,6 +1669,9 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
         if (aurApp->GetRemoveMode())
             return;
 
+        if (modelid > 0)
+            target->SetDisplayId(modelid);
+
         if (PowerType != POWER_MANA)
         {
             uint32 oldPower = target->GetPower(PowerType);
@@ -1719,12 +1722,6 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
             return;
 
         target->SetShapeshiftForm(form);
-        if (modelid > 0)
-        {
-            SpellInfo const* transformSpellInfo = sSpellMgr->GetSpellInfo(target->getTransForm());
-            if (!transformSpellInfo || !GetSpellInfo()->IsPositive())
-                target->SetDisplayId(modelid);
-        }
     }
     else
     {
@@ -1847,11 +1844,9 @@ void AuraEffect::HandleAuraTransform(AuraApplication const* aurApp, uint8 mode, 
 
     if (apply)
     {
-        // update active transform spell only when transform not set or not overwriting negative by positive case
-        SpellInfo const* transformSpellInfo = sSpellMgr->GetSpellInfo(target->getTransForm());
-        if (!transformSpellInfo || !GetSpellInfo()->IsPositive() || transformSpellInfo->IsPositive())
+        // update active transform spell only when transform or shapeshift not set or not overwriting negative by positive case
+        if (!target->GetModelForForm(target->GetShapeshiftForm()) || !GetSpellInfo()->IsPositive())
         {
-            target->setTransForm(GetId());
             // special case (spell specific functionality)
             if (GetMiscValue() == 0)
             {
@@ -2019,6 +2014,11 @@ void AuraEffect::HandleAuraTransform(AuraApplication const* aurApp, uint8 mode, 
                 }
             }
         }
+
+        // update active transform spell only when transform or shapeshift not set or not overwriting negative by positive case
+        SpellInfo const* transformSpellInfo = sSpellMgr->GetSpellInfo(target->getTransForm());
+        if (!transformSpellInfo || !GetSpellInfo()->IsPositive() || transformSpellInfo->IsPositive())
+            target->setTransForm(GetId());
 
         // polymorph case
         if ((mode & AURA_EFFECT_HANDLE_REAL) && target->GetTypeId() == TYPEID_PLAYER && target->IsPolymorphed())
@@ -3494,23 +3494,11 @@ void AuraEffect::HandleModResistancePercent(AuraApplication const* aurApp, uint8
         return;
 
     Unit* target = aurApp->GetTarget();
-    int32 spellGroupVal = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MOD_RESISTANCE_PCT);
-    if (abs(spellGroupVal) >= abs(GetAmount()))
-        return;
 
     for (int8 i = SPELL_SCHOOL_NORMAL; i < MAX_SPELL_SCHOOL; i++)
     {
         if (GetMiscValue() & int32(1<<i))
         {
-            if (spellGroupVal)
-            {
-                target->HandleStatModifier(UnitMods(UNIT_MOD_RESISTANCE_START + i), TOTAL_PCT, (float)spellGroupVal, !apply);
-                if (target->GetTypeId() == TYPEID_PLAYER || target->IsPet())
-                {
-                    target->ApplyResistanceBuffModsPercentMod(SpellSchools(i), true, (float)spellGroupVal, !apply);
-                    target->ApplyResistanceBuffModsPercentMod(SpellSchools(i), false, (float)spellGroupVal, !apply);
-                }
-            }
             target->HandleStatModifier(UnitMods(UNIT_MOD_RESISTANCE_START + i), TOTAL_PCT, float(GetAmount()), apply);
             if (target->GetTypeId() == TYPEID_PLAYER || target->ToCreature()->IsPet())
             {
@@ -3570,29 +3558,19 @@ void AuraEffect::HandleAuraModStat(AuraApplication const* aurApp, uint8 mode, bo
     if (!(mode & (AURA_EFFECT_HANDLE_CHANGE_AMOUNT_MASK | AURA_EFFECT_HANDLE_STAT)))
         return;
 
+    Unit* target = aurApp->GetTarget();
+
     if (GetMiscValue() < -2 || GetMiscValue() > 4)
     {
         TC_LOG_ERROR("spells", "WARNING: Spell %u effect %u has an unsupported misc value (%i) for SPELL_AURA_MOD_STAT ", GetId(), GetEffIndex(), GetMiscValue());
         return;
     }
 
-    Unit* target = aurApp->GetTarget();
-    int32 spellGroupVal = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MOD_STAT, true, GetMiscValue());
-    if (abs(spellGroupVal) >= abs(GetAmount()))
-        return;
-
     for (int32 i = STAT_STRENGTH; i < MAX_STATS; i++)
     {
         // -1 or -2 is all stats (misc < -2 checked in function beginning)
         if (GetMiscValue() < 0 || GetMiscValue() == i)
         {
-            if (spellGroupVal)
-            {
-                target->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_VALUE, float(spellGroupVal), !apply);
-                if (target->GetTypeId() == TYPEID_PLAYER || target->ToCreature()->IsPet())
-                    target->ApplyStatBuffMod(Stats(i), float(spellGroupVal), !apply);
-            }
-
             //target->ApplyStatMod(Stats(i), m_amount, apply);
             target->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_VALUE, float(GetAmount()), apply);
             if (target->GetTypeId() == TYPEID_PLAYER || target->ToCreature()->IsPet())
@@ -3704,28 +3682,12 @@ void AuraEffect::HandleModTotalPercentStat(AuraApplication const* aurApp, uint8 
     if (!(mode & (AURA_EFFECT_HANDLE_CHANGE_AMOUNT_MASK | AURA_EFFECT_HANDLE_STAT)))
         return;
 
+    Unit* target = aurApp->GetTarget();
+
     if (GetMiscValue() < -1 || GetMiscValue() > 4)
     {
         TC_LOG_ERROR("spells", "WARNING: Misc Value for SPELL_AURA_MOD_PERCENT_STAT not valid");
         return;
-    }
-
-    Unit* target = aurApp->GetTarget();
-    int32 spellGroupVal = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE, true, -1);
-    if (abs(spellGroupVal) >= abs(GetAmount()))
-        return;
-
-    if (spellGroupVal)
-    {
-        for (int32 i = STAT_STRENGTH; i < MAX_STATS; i++)
-        {
-            if (GetMiscValue() == i || GetMiscValue() == -1) // affect the same stats
-            {
-                target->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_PCT, float(spellGroupVal), !apply);
-                if (target->GetTypeId() == TYPEID_PLAYER || target->ToCreature()->IsPet())
-                    target->ApplyStatPercentBuffMod(Stats(i), float(spellGroupVal), !apply);
-            }
-        }
     }
 
     // save current health state
@@ -3736,17 +3698,6 @@ void AuraEffect::HandleModTotalPercentStat(AuraApplication const* aurApp, uint8 
     {
         if (GetMiscValue() == i || GetMiscValue() == -1)
         {
-            int32 spellGroupVal2 = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MOD_TOTAL_STAT_PERCENTAGE, true, i);
-            if (abs(spellGroupVal2) >= abs(GetAmount()))
-                continue;
-
-            if (spellGroupVal2)
-            {
-                target->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_PCT, float(spellGroupVal2), !apply);
-                if (target->GetTypeId() == TYPEID_PLAYER || target->ToCreature()->IsPet())
-                    target->ApplyStatPercentBuffMod(Stats(i), float(spellGroupVal2), !apply);
-            }
-
             target->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_PCT, float(GetAmount()), apply);
             if (target->GetTypeId() == TYPEID_PLAYER || target->ToCreature()->IsPet())
                 target->ApplyStatPercentBuffMod(Stats(i), float(GetAmount()), apply);
@@ -4145,17 +4096,7 @@ void AuraEffect::HandleModCombatSpeedPct(AuraApplication const* aurApp, uint8 mo
         return;
 
     Unit* target = aurApp->GetTarget();
-    int32 spellGroupVal = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MELEE_SLOW);
-    if (abs(spellGroupVal) >= abs(GetAmount()))
-        return;
 
-    if (spellGroupVal)
-    {
-        target->ApplyCastTimePercentMod(float(spellGroupVal), !apply);
-        target->ApplyAttackTimePercentMod(BASE_ATTACK, float(spellGroupVal), !apply);
-        target->ApplyAttackTimePercentMod(OFF_ATTACK, float(spellGroupVal), !apply);
-        target->ApplyAttackTimePercentMod(RANGED_ATTACK, float(spellGroupVal), !apply);
-    }
     target->ApplyCastTimePercentMod(float(m_amount), apply);
     target->ApplyAttackTimePercentMod(BASE_ATTACK, float(GetAmount()), apply);
     target->ApplyAttackTimePercentMod(OFF_ATTACK, float(GetAmount()), apply);
@@ -4179,15 +4120,7 @@ void AuraEffect::HandleModMeleeSpeedPct(AuraApplication const* aurApp, uint8 mod
         return;
 
     Unit* target = aurApp->GetTarget();
-    int32 spellGroupVal = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MOD_MELEE_HASTE);
-    if (abs(spellGroupVal) >= abs(GetAmount()))
-        return;
 
-    if (spellGroupVal)
-    {
-        target->ApplyAttackTimePercentMod(BASE_ATTACK, float(spellGroupVal), !apply);
-        target->ApplyAttackTimePercentMod(OFF_ATTACK, float(spellGroupVal), !apply);
-    }
     target->ApplyAttackTimePercentMod(BASE_ATTACK, float(GetAmount()), apply);
     target->ApplyAttackTimePercentMod(OFF_ATTACK,  float(GetAmount()), apply);
 }
@@ -4424,8 +4357,7 @@ void AuraEffect::HandleModDamagePercentDone(AuraApplication const* aurApp, uint8
         return;
 
     Unit* target = aurApp->GetTarget();
-    int32 spellGroupVal = target->GetHighestExclusiveSameEffectSpellGroupValue(this, SPELL_AURA_MOD_DAMAGE_PERCENT_DONE);
-    if (abs(spellGroupVal) >= abs(GetAmount()))
+    if (!target)
         return;
 
     if (target->GetTypeId() == TYPEID_PLAYER)
@@ -4437,23 +4369,12 @@ void AuraEffect::HandleModDamagePercentDone(AuraApplication const* aurApp, uint8
 
     if ((GetMiscValue() & SPELL_SCHOOL_MASK_NORMAL) && (GetSpellInfo()->EquippedItemClass == -1 || target->GetTypeId() != TYPEID_PLAYER))
     {
-        if (spellGroupVal)
-        {
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, float(spellGroupVal), !apply);
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND, TOTAL_PCT, float(spellGroupVal), !apply);
-            target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED, TOTAL_PCT, float(spellGroupVal), !apply);
-        }
         target->HandleStatModifier(UNIT_MOD_DAMAGE_MAINHAND, TOTAL_PCT, float(GetAmount()), apply);
         target->HandleStatModifier(UNIT_MOD_DAMAGE_OFFHAND,  TOTAL_PCT, float(GetAmount()), apply);
         target->HandleStatModifier(UNIT_MOD_DAMAGE_RANGED,   TOTAL_PCT, float(GetAmount()), apply);
 
-        if (Player* player = target->ToPlayer())
-        {
-            if (spellGroupVal)
-                player->ApplyPercentModFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT, float(spellGroupVal), !apply);
-
-            player->ApplyPercentModFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT, float(GetAmount()), apply);
-        }
+        if (target->GetTypeId() == TYPEID_PLAYER)
+            target->ToPlayer()->ApplyPercentModFloatValue(PLAYER_FIELD_MOD_DAMAGE_DONE_PCT, float (GetAmount()), apply);
     }
     else
     {

@@ -129,7 +129,7 @@ class npc_abyssal : public CreatureScript
                 me->SetDisplayId(11686);
                 if (trigger == 1) //debris
                 {
-                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    //me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     DoCast(me, SPELL_DEBRIS_VISUAL, true);
                     FireBlast_Timer = 5000;
                     Despawn_Timer = 10000;
@@ -240,7 +240,7 @@ class boss_magtheridon : public CreatureScript
                 Phase3 = false;
                 NeedCheckCube = false;
 
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+               // me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
                 me->AddUnitState(UNIT_STATE_STUNNED);
@@ -407,7 +407,7 @@ class boss_magtheridon : public CreatureScript
                         {
                             CAST_AI(npc_abyssal::npc_abyssalAI, summon->AI())->SetTrigger(2);
                             DoCast(summon, SPELL_BLAZE_TARGET, true);
-                            summon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            //summon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                         }
                     }
                     Blaze_Timer = urand(20000, 40000);

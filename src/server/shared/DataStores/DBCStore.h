@@ -84,32 +84,10 @@ class DBCStorage
 
         T const* LookupEntry(uint32 id) const
         {
-            if (loaded)
-            {
-                typename std::map<uint32, T const*>::const_iterator it = data.find(id);
-                if (it != data.end())
-                    return it->second;
-            }
             return (id >= nCount) ? NULL : indexTable.asT[id];
         }
 
-        void SetEntry(uint32 id, T* t)
-        {
-            if (!loaded)
-            {
-                for (uint32 i = 0; i < GetNumRows(); ++i)
-                {
-                    T const* node = LookupEntry(i);
-                    if (!node)
-                        continue;
-                    data[i] = node;
-                }
-                loaded = true;
-            }
-            data[id] = t;
-        }
-
-        uint32  GetNumRows() const { return loaded ? data.size() : nCount; }
+        uint32  GetNumRows() const { return nCount; }
         char const* GetFormat() const { return fmt; }
         uint32 GetFieldCount() const { return fieldCount; }
 
@@ -286,12 +264,6 @@ class DBCStorage
 
         void Clear()
         {
-            if (loaded)
-            {
-                data.clear();
-                loaded = false;
-            }
-
             if (!indexTable.asT)
                 return;
 
@@ -322,8 +294,6 @@ class DBCStorage
         indexTable;
 
         T* dataTable;
-        std::map<uint32, T const*> data;
-        bool loaded;
         StringPoolList stringPoolList;
 
         DBCStorage(DBCStorage const& right) = delete;

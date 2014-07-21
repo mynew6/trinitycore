@@ -365,7 +365,6 @@ void WorldSession::DoLootRelease(uint64 lguid)
             if (!creature->IsAlive())
                 creature->AllLootRemovedFromCorpse();
 
-
             loot->clear();
         }
         else

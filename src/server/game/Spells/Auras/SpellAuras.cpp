@@ -730,6 +730,7 @@ int32 Aura::CalcMaxDuration(Unit* caster) const
     // IsPermanent() checks max duration (which we are supposed to calculate here)
     if (maxDuration != -1 && modOwner)
         modOwner->ApplySpellMod(GetId(), SPELLMOD_DURATION, maxDuration);
+
     return maxDuration;
 }
 
@@ -739,7 +740,7 @@ void Aura::SetDuration(int32 duration, bool withMods)
         if (Unit* caster = GetCaster())
             if (Player* modOwner = caster->GetSpellModOwner())
                 modOwner->ApplySpellMod(GetId(), SPELLMOD_DURATION, duration);
-    
+
     m_duration = duration;
     SetNeedClientUpdateForTargets();
 }
@@ -777,6 +778,7 @@ void Aura::SetCharges(uint8 charges)
 {
     if (m_procCharges == charges)
         return;
+
     m_procCharges = charges;
     m_isUsingCharges = m_procCharges != 0;
     SetNeedClientUpdateForTargets();
@@ -791,6 +793,7 @@ uint8 Aura::CalcMaxCharges(Unit* caster) const
     if (caster)
         if (Player* modOwner = caster->GetSpellModOwner())
             modOwner->ApplySpellMod(GetId(), SPELLMOD_CHARGES, maxProcCharges);
+
     return maxProcCharges;
 }
 
@@ -813,6 +816,7 @@ bool Aura::ModCharges(int32 num, AuraRemoveMode removeMode)
 
         SetCharges(charges);
     }
+
     return false;
 }
 
@@ -834,7 +838,7 @@ void Aura::SetStackAmount(uint8 stackAmount)
 
     for (std::list<AuraApplication*>::const_iterator apptItr = applications.begin(); apptItr != applications.end(); ++apptItr)
         if (!(*apptItr)->GetRemoveMode())
-            {
+        {
             HandleAuraSpecificMods(*apptItr, caster, true, true);
             HandleAuraSpecificPeriodics(*apptItr, caster);
         }
@@ -881,6 +885,7 @@ bool Aura::ModStackAmount(int32 num, AuraRemoveMode removeMode)
                     if (SpellModifier* mod = aurEff->GetSpellModifier())
                         mod->charges = GetCharges();
     }
+
     SetNeedClientUpdateForTargets();
     return false;
 }
@@ -907,7 +912,7 @@ bool Aura::IsArea() const
     for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
         if (HasEffect(i) && GetSpellInfo()->Effects[i].IsAreaAuraEffect())
             return true;
-    
+
     return false;
 }
 
@@ -1036,7 +1041,7 @@ void Aura::SetLoadedState(int32 maxduration, int32 duration, int32 charges, uint
         if (m_effects[i])
         {
             m_effects[i]->SetAmount(amount[i]);
-            m_effects[i]->SetCanBeRecalculated(recalculateMask & (1<<i));
+            m_effects[i]->SetCanBeRecalculated((recalculateMask & (1 << i)) != 0);
             m_effects[i]->CalculatePeriodic(caster, false, true);
             m_effects[i]->CalculateSpellMod();
             m_effects[i]->RecalculateAmount(caster);
@@ -1652,7 +1657,7 @@ void Aura::HandleAuraSpecificMods(AuraApplication const* aurApp, Unit* caster, b
                     break;
             }
             break;
-        }
+    }
 }
 
 void Aura::HandleAuraSpecificPeriodics(AuraApplication const* aurApp, Unit* caster)
@@ -1706,7 +1711,7 @@ void Aura::HandleAuraSpecificPeriodics(AuraApplication const* aurApp, Unit* cast
                 break;
             }
             default:
-                break;                                        
+                break;
         }
     }
 }

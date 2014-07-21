@@ -412,7 +412,6 @@ bool Group::AddMember(Player* player)
         stmt->setUInt8(4, member.roles);
 
         CharacterDatabase.Execute(stmt);
-
     }
 
     SendUpdate();
@@ -508,7 +507,7 @@ bool Group::RemoveMember(uint64 guid, const RemoveMethod& method /*= GROUP_REMOV
 
     // LFG group vote kick handled in scripts
     if (isLFGGroup() && method == GROUP_REMOVEMETHOD_KICK)
-        return m_memberSlots.size();
+        return !m_memberSlots.empty();
 
     // remove member and change leader (if need) only if strong more 2 members _before_ member remove (BG/BF allow 1 member group)
     if (GetMembersCount() > ((isBGGroup() || isLFGGroup() || isBFGroup()) ? 1u : 2u))
@@ -2189,12 +2188,12 @@ bool Group::IsFull() const
 
 bool Group::isLFGGroup() const
 {
-    return m_groupType & GROUPTYPE_LFG;
+    return (m_groupType & GROUPTYPE_LFG) != 0;
 }
 
 bool Group::isRaidGroup() const
 {
-    return m_groupType & GROUPTYPE_RAID;
+    return (m_groupType & GROUPTYPE_RAID) != 0;
 }
 
 bool Group::isBGGroup() const

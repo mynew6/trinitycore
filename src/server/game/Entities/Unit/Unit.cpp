@@ -381,7 +381,7 @@ void Unit::Update(uint32 p_time)
 bool Unit::haveOffhandWeapon() const
 {
     if (Player const* player = ToPlayer())
-        return player->GetWeaponForAttack(OFF_ATTACK, true);
+        return player->GetWeaponForAttack(OFF_ATTACK, true) != nullptr;
 
     return CanDualWield();
 }
@@ -2390,7 +2390,7 @@ SpellMissInfo Unit::MeleeSpellHitResult(Unit* victim, SpellInfo const* spellInfo
 
     bool canDodge = true;
     bool canParry = true;
-    bool canBlock = spellInfo->AttributesEx3 & SPELL_ATTR3_BLOCKABLE_SPELL;
+    bool canBlock = (spellInfo->AttributesEx3 & SPELL_ATTR3_BLOCKABLE_SPELL) != 0;
 
     // Same spells cannot be parry/dodge
     if (spellInfo->Attributes & SPELL_ATTR0_IMPOSSIBLE_DODGE_PARRY_BLOCK)
@@ -3816,7 +3816,7 @@ void Unit::RemoveAurasDueToSpellBySteal(uint32 spellId, uint64 casterGUID, Unit*
                 }
             }
 
-            bool stealCharge = aura->GetSpellInfo()->AttributesEx7 & SPELL_ATTR7_DISPEL_CHARGES;
+            bool stealCharge = (aura->GetSpellInfo()->AttributesEx7 & SPELL_ATTR7_DISPEL_CHARGES) != 0;
             // Cast duration to unsigned to prevent permanent aura's such as Righteous Fury being permanently added to caster
             uint32 dur = std::min(2u * MINUTE * IN_MILLISECONDS, uint32(aura->GetDuration()));
 
@@ -4336,7 +4336,7 @@ void Unit::GetDispellableAuraList(Unit* caster, uint32 dispelMask, DispelCharges
             // The charges / stack amounts don't count towards the total number of auras that can be dispelled.
             // Ie: A dispel on a target with 5 stacks of Winters Chill and a Polymorph has 1 / (1 + 1) -> 50% chance to dispell
             // Polymorph instead of 1 / (5 + 1) -> 16%.
-            bool dispel_charges = aura->GetSpellInfo()->AttributesEx7 & SPELL_ATTR7_DISPEL_CHARGES;
+            bool dispel_charges = (aura->GetSpellInfo()->AttributesEx7 & SPELL_ATTR7_DISPEL_CHARGES) != 0;
             uint8 charges = dispel_charges ? aura->GetCharges() : aura->GetStackAmount();
             if (charges > 0)
                 dispelList.push_back(std::make_pair(aura, charges));
@@ -7608,7 +7608,7 @@ bool Unit::HandleAuraProc(Unit* victim, uint32 damage, Aura* triggeredByAura, Sp
 
                     CastSpell(this, 28682, true);
 
-                    return (procEx & PROC_EX_CRITICAL_HIT);
+                    return (procEx & PROC_EX_CRITICAL_HIT) != 0;
                 }
                 // Empowered Fire
                 case 31656:
@@ -8708,7 +8708,7 @@ void Unit::setPowerType(Powers new_powertype)
         }
     }
 
-float powerMultiplier = 1.0f;
+    float powerMultiplier = 1.0f;
     if (!IsPet())
         if (Creature* creature = ToCreature())
             powerMultiplier = creature->GetCreatureTemplate()->ModMana;
@@ -9941,7 +9941,7 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
         }
     }
 
-            // Custom scripted damage
+    // Custom scripted damage
     switch (spellProto->SpellFamilyName)
     {
         case SPELLFAMILY_DEATHKNIGHT:
@@ -10004,7 +10004,6 @@ uint32 Unit::SpellDamageBonusDone(Unit* victim, SpellInfo const* spellProto, uin
             }
         }
     }
-
     // Default calculation
     if (DoneAdvertisedBenefit)
     {
@@ -10067,7 +10066,9 @@ float Unit::SpellDamagePctDone(Unit* victim, SpellInfo const* spellProto, Damage
                 AddPct(DoneTotalMod, (*i)->GetAmount());
         }
     }
+
     uint32 creatureTypeMask = victim->GetCreatureTypeMask();
+
     AuraEffectList const& mDamageDoneVersus = GetAuraEffectsByType(SPELL_AURA_MOD_DAMAGE_DONE_VERSUS);
     for (AuraEffectList::const_iterator i = mDamageDoneVersus.begin(); i != mDamageDoneVersus.end(); ++i)
         if (creatureTypeMask & uint32((*i)->GetMiscValue()))
@@ -10344,7 +10345,7 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellInfo const* spellProto, ui
     int32 TakenTotal = 0;
     float TakenTotalMod = 1.0f;
     float TakenTotalCasterMod = 0.0f;
-    
+
     // Mod damage from spell mechanic
     if (uint32 mechanicMask = spellProto->GetAllEffectsMechanicMask())
     {
@@ -10364,9 +10365,10 @@ uint32 Unit::SpellDamageBonusTaken(Unit* caster, SpellInfo const* spellProto, ui
             case 2109:
                 if ((*i)->GetMiscValue() & SPELL_SCHOOL_MASK_NORMAL)
                 {
-                    if (GetTypeId() != TYPEID_PLAYER)
-                        continue;
-                    float mod = ToPlayer()->GetRatingBonusValue(CR_CRIT_TAKEN_MELEE) * (-8.0f);
+                    // Patch 2.4.3: The resilience required to reach the 90% damage reduction cap
+                    //  is 22.5% critical strike damage reduction, or 444 resilience.
+                    // To calculate for 90%, we multiply the 100% by 4 (22.5% * 4 = 90%)
+                    float mod = -1.0f * GetMeleeCritDamageReduction(400);
                     AddPct(TakenTotalMod, std::max(mod, float((*i)->GetAmount())));
                 }
                 break;
@@ -10556,19 +10558,18 @@ float Unit::GetUnitSpellCriticalChance(Unit* victim, SpellInfo const* spellProto
 
                     switch ((*i)->GetMiscValue())
                     {
-                          case 911: // Shatter (Rank 1)
+                        case 911: // Shatter (Rank 1)
                             if (victim->HasAuraState(AURA_STATE_FROZEN, spellProto, this))
                                 crit_chance += 17;
                             break;
-                         case 910: // Shatter (Rank 2)
+                        case 910: // Shatter (Rank 2)
                              if (victim->HasAuraState(AURA_STATE_FROZEN, spellProto, this))
                                  crit_chance += 34;
                              break;
-                         case 849: // Shatter (Rank 3)
+                        case 849: // Shatter (Rank 3)
                             if (victim->HasAuraState(AURA_STATE_FROZEN, spellProto, this))
                                 crit_chance += 50;
                              break;
-                            break;
                         case 7917: // Glyph of Shadowburn
                             if (victim->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, spellProto, this))
                                 crit_chance+=(*i)->GetAmount();
@@ -10609,7 +10610,7 @@ float Unit::GetUnitSpellCriticalChance(Unit* victim, SpellInfo const* spellProto
                                     crit_chance += aurEff->GetAmount();
                            break;
                         }
-                    break;
+                        break;
                     case SPELLFAMILY_ROGUE:
                         // Shiv-applied poisons can't crit
                         if (FindCurrentSpellBySpellId(5938))
@@ -10631,7 +10632,7 @@ float Unit::GetUnitSpellCriticalChance(Unit* victim, SpellInfo const* spellProto
                                 return 100.0f;
                             break;
                         }
-                    break;
+                        break;
                     case SPELLFAMILY_SHAMAN:
                         // Lava Burst
                         if (spellProto->SpellFamilyFlags[1] & 0x00001000)
@@ -10641,7 +10642,7 @@ float Unit::GetUnitSpellCriticalChance(Unit* victim, SpellInfo const* spellProto
                                     return 100.0f;
                             break;
                         }
-                    break;
+                        break;
                 }
             }
             break;
@@ -10662,17 +10663,17 @@ float Unit::GetUnitSpellCriticalChance(Unit* victim, SpellInfo const* spellProto
                                 crit_chance += rendAndTear->GetAmount();
                             break;
                         }
-                    break;
+                        break;
                     case SPELLFAMILY_WARRIOR:
-                       // Victory Rush
-                       if (spellProto->SpellFamilyFlags[1] & 0x100)
-                       {
-                           // Glyph of Victory Rush
-                           if (AuraEffect const* aurEff = GetAuraEffect(58382, 0))
-                               crit_chance += aurEff->GetAmount();
-                           break;
-                       }
-                    break;
+                        // Victory Rush
+                        if (spellProto->SpellFamilyFlags[1] & 0x100)
+                        {
+                            // Glyph of Victory Rush
+                            if (AuraEffect const* aurEff = GetAuraEffect(58382, 0))
+                                crit_chance += aurEff->GetAmount();
+                            break;
+                        }
+                        break;
                 }
             }
         /// Intentional fallback. Calculate critical strike chance for both Ranged and Melee spells
@@ -11202,6 +11203,9 @@ bool Unit::IsImmunedToSpell(SpellInfo const* spellInfo) const
 
 bool Unit::IsImmunedToSpellEffect(SpellInfo const* spellInfo, uint32 index) const
 {
+    if (!spellInfo || !spellInfo->Effects[index].IsEffect())
+        return false;
+
     if (spellInfo->Attributes & SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY)
         return false;
 
@@ -11483,9 +11487,10 @@ uint32 Unit::MeleeDamageBonusTaken(Unit* attacker, uint32 pdamage, WeaponAttackT
             case 2109:
                 if ((*i)->GetMiscValue() & SPELL_SCHOOL_MASK_NORMAL)
                 {
-                    if (GetTypeId() != TYPEID_PLAYER)
-                        continue;
-                    float mod = ToPlayer()->GetRatingBonusValue(CR_CRIT_TAKEN_MELEE) * (-8.0f);
+                    // Patch 2.4.3: The resilience required to reach the 90% damage reduction cap
+                    //  is 22.5% critical strike damage reduction, or 444 resilience.
+                    // To calculate for 90%, we multiply the 100% by 4 (22.5% * 4 = 90%)
+                    float mod = -1.0f * GetMeleeCritDamageReduction(400);
                     AddPct(TakenTotalMod, std::max(mod, float((*i)->GetAmount())));
                 }
                 break;
@@ -15304,7 +15309,7 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
 
         if (group)
         {
-            group->BroadcastPacket(&data, group->GetMemberGroup(player->GetGUID()));
+            group->BroadcastPacket(&data, group->GetMemberGroup(player->GetGUID()) != 0);
 
             if (creature)
             {
@@ -15458,7 +15463,7 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
         if (!creature->IsPet())
         {
             creature->DeleteThreatList();
-            
+
             // must be after setDeathState which resets dynamic flags
             if (!creature->loot.isLooted())
                 creature->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
@@ -16464,7 +16469,7 @@ void Unit::SetPhaseMask(uint32 newPhaseMask, bool update)
                     summon->SetPhaseMask(newPhaseMask, true);
     }
 
-        // Update visibility after phasing pets and summons so they wont despawn
+    // Update visibility after phasing pets and summons so they wont despawn
     if (update)
         UpdateObjectVisibility();
 }

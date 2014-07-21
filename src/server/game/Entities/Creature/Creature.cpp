@@ -1562,7 +1562,6 @@ void Creature::Respawn(bool force)
         m_respawnTime = 0;
         _pickpocketLootRestore = 0;
         loot.clear();
-
         if (m_originalEntry != GetEntry())
             UpdateEntry(m_originalEntry);
 
@@ -1677,7 +1676,7 @@ bool Creature::isWorldBoss() const
     if (IsPet())
         return false;
 
-    return GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_BOSS;
+    return (GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_BOSS) != 0;
 }
 
 SpellInfo const* Creature::reachWithSpellAttack(Unit* victim)
@@ -2920,3 +2919,4 @@ void Creature::StartPickPocketRefillTimer()
 {
     _pickpocketLootRestore = time(NULL) + sWorld->getIntConfig(CONFIG_CREATURE_PICKPOCKET_REFILL);
 }
+

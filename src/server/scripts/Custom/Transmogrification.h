@@ -36,18 +36,17 @@ public:
     {
     public:
         typedef std::unordered_map<K, V> MapType;
-        typedef ACE_RW_Thread_Mutex LockType;
 
         void Insert(K k, V v)
         {
-            TRINITY_WRITE_GUARD(LockType, i_lock);
-            m_hashMap[k] = v;
+			boost::shared_lock<boost::shared_mutex> lock(_lock);
+            _hashMap[k] = v;
         }
 
         void Remove(K k)
         {
-            TRINITY_WRITE_GUARD(LockType, i_lock);
-            m_hashMap.erase(k);
+			boost::unique_lock<boost::shared_mutex> lock(_lock);
+            _hashMap.erase(k);
         }
 
         // Note, returns a pointer to a copy of the value
@@ -165,6 +164,6 @@ public:
     uint32 GetSpecialPrice(ItemTemplate const* proto) const;
     std::vector<uint64> GetItemList(const Player* player) const;
 };
-#define sTransmogrification ACE_Singleton<Transmogrification, ACE_Null_Mutex>::instance()
+#define sTransmogrification Transmogrification::instance()
 
 #endif

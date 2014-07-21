@@ -108,10 +108,7 @@ void GameObject::CleanupsBeforeDelete(bool finalCleanup)
     WorldObject::CleanupsBeforeDelete(finalCleanup);
 
     if (m_uint32Values)                                      // field array can be not exist if GameOBject not loaded
-    {
-        m_Events.KillAllEvents(true);
         RemoveFromOwner();
-    }
 }
 
 void GameObject::RemoveFromOwner()
@@ -292,8 +289,6 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map* map, uint32 phaseMa
 
 void GameObject::Update(uint32 diff)
 {
-    m_Events.Update(diff);
-
     if (AI())
         AI()->UpdateAI(diff);
     else if (!AIM_Initialize())

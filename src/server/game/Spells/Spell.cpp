@@ -1538,8 +1538,6 @@ void Spell::SelectImplicitTrajTargets(SpellEffIndex effIndex)
             }
         }
 
-                continue;
-
         const float size = std::max((*itr)->GetObjectSize() * 0.7f, 1.0f); // 1/sqrt(3)
         /// @todo all calculation should be based on src instead of m_caster
         const float objDist2d = m_targets.GetSrcPos()->GetExactDist2d(*itr) * std::cos(m_targets.GetSrcPos()->GetRelativeAngle(*itr));
@@ -1766,8 +1764,8 @@ void Spell::SearchTargets(SEARCHER& searcher, uint32 containerMask, Unit* refere
         return;
 
     // search world and grid for possible targets
-    bool searchInGrid = containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_GAMEOBJECT);
-    bool searchInWorld = containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_PLAYER | GRID_MAP_TYPE_MASK_CORPSE);
+    bool searchInGrid = (containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_GAMEOBJECT)) != 0;
+    bool searchInWorld = (containerMask & (GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_PLAYER | GRID_MAP_TYPE_MASK_CORPSE)) != 0;
     if (searchInGrid || searchInWorld)
     {
         float x, y;
@@ -2398,7 +2396,6 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
                 caster->ToPlayer()->CastItemCombatSpell(unitTarget, m_attackType, procVictim, procEx);
         }
 
-
         m_damage = damageInfo.damage;
 
         caster->DealSpellDamage(&damageInfo, true);
@@ -2545,7 +2542,7 @@ SpellMissInfo Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, bool scaleA
             aura_effmask |= 1 << i;
 
     // Get Data Needed for Diminishing Returns, some effects may have multiple auras, so this must be done on spell hit, not aura add
-    m_diminishGroup = GetDiminishingReturnsGroupForSpell(m_spellInfo, m_triggeredByAuraSpell);
+    m_diminishGroup = GetDiminishingReturnsGroupForSpell(m_spellInfo, m_triggeredByAuraSpell != nullptr);
     if (m_diminishGroup && aura_effmask)
     {
         m_diminishLevel = unit->GetDiminishing(m_diminishGroup);
@@ -2556,6 +2553,7 @@ SpellMissInfo Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, bool scaleA
             type == DRTYPE_ALL)
             unit->IncrDiminishing(m_diminishGroup);
     }
+
     if (aura_effmask)
     {
         // Select rank for aura with level requirements only in specific cases
@@ -2621,7 +2619,7 @@ SpellMissInfo Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask, bool scaleA
 
                     // Haste modifies duration of channeled spells
                     if (m_spellInfo->IsChanneled())
-                      m_originalCaster->ModSpellCastTime(aurSpellInfo, duration, this);
+                        m_originalCaster->ModSpellCastTime(aurSpellInfo, duration, this);
                     // and duration of auras affected by SPELL_AURA_PERIODIC_HASTE
                     else if (m_originalCaster->HasAuraTypeWithAffectMask(SPELL_AURA_PERIODIC_HASTE, aurSpellInfo) || m_spellInfo->AttributesEx5 & SPELL_ATTR5_HASTE_AFFECT_DURATION)
                         duration = int32(duration * m_originalCaster->GetFloatValue(UNIT_MOD_CAST_SPEED));
@@ -3247,7 +3245,8 @@ void Spell::handle_immediate()
                 modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_DURATION, duration);
 
             // Apply haste mods
-              m_caster->ModSpellCastTime(m_spellInfo, duration, this);
+            m_caster->ModSpellCastTime(m_spellInfo, duration, this);
+
             m_spellState = SPELL_STATE_CASTING;
             m_caster->AddInterruptMask(m_spellInfo->ChannelInterruptFlags);
             SendChannelStart(duration);
@@ -3775,7 +3774,7 @@ void Spell::SendSpellStart()
         castFlags |= CAST_FLAG_POWER_LEFT_SELF;
 
     if (m_spellInfo->RuneCostID && m_spellInfo->PowerType == POWER_RUNE)
-        castFlags |= CAST_FLAG_NO_GCD;                       // not needed, but Blizzard sends it
+        castFlags |= CAST_FLAG_NO_GCD; // not needed, but Blizzard sends it
 
     WorldPacket data(SMSG_SPELL_START, (8+8+4+4+2));
     if (m_CastItem)
@@ -3834,7 +3833,7 @@ void Spell::SendSpellGo()
         && m_spellInfo->PowerType == POWER_RUNE
         && !(_triggeredCastFlags & TRIGGERED_IGNORE_POWER_AND_REAGENT_COST))
     {
-		castFlags |= CAST_FLAG_NO_GCD;                       // not needed, but Blizzard sends it
+        castFlags |= CAST_FLAG_NO_GCD;                       // not needed, but Blizzard sends it
         castFlags |= CAST_FLAG_RUNE_LIST;                    // rune cooldowns list
     }
 
@@ -5522,7 +5521,7 @@ SpellCastResult Spell::CheckCasterAuras() const
             mechanic_immune = IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK;
     }
 
-    bool usableInStun = m_spellInfo->AttributesEx5 & SPELL_ATTR5_USABLE_WHILE_STUNNED;
+    bool usableInStun = (m_spellInfo->AttributesEx5 & SPELL_ATTR5_USABLE_WHILE_STUNNED) != 0;
 
     // Glyph of Pain Suppression
     // there is no other way to handle it
@@ -6478,7 +6477,7 @@ bool Spell::CheckEffectTarget(Unit const* target, uint32 eff) const
 
 bool Spell::IsNextMeleeSwingSpell() const
 {
-    return m_spellInfo->Attributes & SPELL_ATTR0_ON_NEXT_SWING;
+    return (m_spellInfo->Attributes & SPELL_ATTR0_ON_NEXT_SWING) != 0;
 }
 
 bool Spell::IsAutoActionResetSpell() const
@@ -6657,7 +6656,7 @@ void Spell::HandleLaunchPhase()
         if (m_applyMultiplierMask & (1 << i))
             multiplier[i] = m_spellInfo->Effects[i].CalcDamageMultiplier(m_originalCaster, this);
 
-    bool usesAmmo = m_spellInfo->AttributesCu & SPELL_ATTR0_CU_DIRECT_DAMAGE;
+    bool usesAmmo = (m_spellInfo->AttributesCu & SPELL_ATTR0_CU_DIRECT_DAMAGE) != 0;
     Unit::AuraEffectList const& Auras = m_caster->GetAuraEffectsByType(SPELL_AURA_ABILITY_CONSUME_NO_AMMO);
     for (Unit::AuraEffectList::const_iterator j = Auras.begin(); j != Auras.end(); ++j)
     {

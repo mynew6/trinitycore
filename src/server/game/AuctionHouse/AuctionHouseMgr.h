@@ -97,11 +97,7 @@ struct AuctionEntry
 class AuctionHouseObject
 {
   public:
-    ~AuctionHouseObject()
-    {
-        for (AuctionEntryMap::iterator itr = AuctionsMap.begin(); itr != AuctionsMap.end(); ++itr)
-            delete itr->second;
-    }
+      ~AuctionHouseObject();
 
     typedef std::map<uint32, AuctionEntry*> AuctionEntryMap;
 
@@ -142,8 +138,8 @@ class AuctionHouseMgr
     public:
         static AuctionHouseMgr* instance()
         {
-            static AuctionHouseMgr* instance = new AuctionHouseMgr();
-            return instance;
+            static AuctionHouseMgr instance;
+            return &instance;
         }
 
         typedef std::unordered_map<uint32, Item*> ItemMap;

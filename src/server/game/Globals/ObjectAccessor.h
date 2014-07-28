@@ -51,7 +51,7 @@ class HashMapHolder
 
         static void Insert(T* o)
         {
-            boost::shared_lock<boost::shared_mutex> lock(_lock);
+            boost::unique_lock<boost::shared_mutex> lock(_lock);
 
             _objectMap[o->GetGUID()] = o;
         }
@@ -59,12 +59,14 @@ class HashMapHolder
         static void Remove(T* o)
         {
             boost::unique_lock<boost::shared_mutex> lock(_lock);
+
             _objectMap.erase(o->GetGUID());
         }
 
         static T* Find(uint64 guid)
         {
             boost::shared_lock<boost::shared_mutex> lock(_lock);
+
             typename MapType::iterator itr = _objectMap.find(guid);
             return (itr != _objectMap.end()) ? itr->second : NULL;
         }
@@ -94,8 +96,8 @@ class ObjectAccessor
 
         static ObjectAccessor* instance()
         {
-            static ObjectAccessor *instance = new ObjectAccessor();
-            return instance;
+            static ObjectAccessor instance;
+            return &instance;
         }
 
         template<class T> static T* GetObjectInOrOutOfWorld(uint64 guid, T* /*typeSpecifier*/)

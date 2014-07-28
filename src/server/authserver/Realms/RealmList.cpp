@@ -39,7 +39,7 @@ void RealmList::Initialize(boost::asio::io_service& ioService, uint32 updateInte
     UpdateRealms(true);
 }
 
-void RealmList::UpdateRealm(uint32 id, const std::string& name, ip::address const& address, ip::address const& localAddr, 
+void RealmList::UpdateRealm(uint32 id, const std::string& name, ip::address const& address, ip::address const& localAddr,
     ip::address const& localSubmask, uint16 port, uint8 icon, RealmFlags flag, uint8 timezone, AccountTypes allowedSecurityLevel, float population, uint32 build)
 {
     // Create new if not exist or update existed
@@ -96,7 +96,7 @@ void RealmList::UpdateRealms(bool init)
                 Field* fields = result->Fetch();
                 uint32 realmId = fields[0].GetUInt32();
                 std::string name = fields[1].GetString();
-                boost::asio::ip::tcp::resolver::query externalAddressQuery(fields[2].GetString(), "");
+                boost::asio::ip::tcp::resolver::query externalAddressQuery(ip::tcp::v4(), fields[2].GetString(), "");
                 boost::asio::ip::tcp::resolver::iterator endPoint = _resolver->resolve(externalAddressQuery);
                 if (endPoint == end)
                 {
@@ -106,7 +106,7 @@ void RealmList::UpdateRealms(bool init)
 
                 ip::address externalAddress = (*endPoint).endpoint().address();
 
-                boost::asio::ip::tcp::resolver::query localAddressQuery(fields[3].GetString(), "");
+                boost::asio::ip::tcp::resolver::query localAddressQuery(ip::tcp::v4(), fields[3].GetString(), "");
                 endPoint = _resolver->resolve(localAddressQuery);
                 if (endPoint == end)
                 {
@@ -116,7 +116,7 @@ void RealmList::UpdateRealms(bool init)
 
                 ip::address localAddress = (*endPoint).endpoint().address();
 
-                boost::asio::ip::tcp::resolver::query localSubmaskQuery(fields[4].GetString(), "");
+                boost::asio::ip::tcp::resolver::query localSubmaskQuery(ip::tcp::v4(), fields[4].GetString(), "");
                 endPoint = _resolver->resolve(localSubmaskQuery);
                 if (endPoint == end)
                 {

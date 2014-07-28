@@ -26,6 +26,8 @@
 template <typename T>
 class ProducerConsumerQueue
 {
+    static_assert(std::is_pointer<T>::value, "T for ProducerConsumerQueue must be a pointer");
+
 private:
     std::mutex _queueLock;
     std::queue<T> _queue;
@@ -38,11 +40,10 @@ public:
 
     void Push(const T& value)
     {
-        _queueLock.lock();
-
-        _queue.push(std::move(value));
-
-        _queueLock.unlock();
+        {
+            std::lock_guard<std::mutex> lock(_queueLock);
+            _queue.push(std::move(value));
+        }
 
         _condition.notify_one();
     }
@@ -76,7 +77,7 @@ public:
         {
             _condition.wait(lock);
         }
-        
+
         if (_queue.empty())
             return;
 
@@ -93,7 +94,7 @@ public:
         {
             T& value = _queue.front();
 
-            delete &value;
+            delete value;
 
             _queue.pop();
         }
@@ -106,6 +107,6 @@ public:
     }
 };
 
-#endif 
+#endif
 
 

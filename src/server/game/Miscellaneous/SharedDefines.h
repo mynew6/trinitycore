@@ -19,9 +19,12 @@
 #ifndef TRINITY_SHAREDDEFINES_H
 #define TRINITY_SHAREDDEFINES_H
 
-#include "DetourNavMesh.h"
 #include "Define.h"
+#include "DetourNavMesh.h"
 #include <cassert>
+
+#define TRINITY
+#define WOTLK
 
 enum SpellEffIndex
 {

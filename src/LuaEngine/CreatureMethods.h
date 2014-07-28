@@ -38,14 +38,14 @@ namespace LuaCreature
         return 1;
     }
 
-    int IsTargetAcceptable(lua_State* L, Creature* creature)
+    int IsTargetableForAttack(lua_State* L, Creature* creature)
     {
-        Unit* target = Eluna::CHECKOBJ<Unit>(L, 2);
+        bool inversAlive = Eluna::CHECKVAL<bool>(L, 2);
 
 #ifdef MANGOS
-        Eluna::Push(L, creature->IsTargetableForAttack(target));
+        Eluna::Push(L, creature->IsTargetableForAttack(inversAlive));
 #else
-        Eluna::Push(L, creature->isTargetableForAttack(target));
+        Eluna::Push(L, creature->isTargetableForAttack(inversAlive));
 #endif
         return 1;
     }
@@ -70,7 +70,11 @@ namespace LuaCreature
     {
         Player* player = Eluna::CHECKOBJ<Player>(L, 2);
 
+#ifdef MANGOS
+        Eluna::Push(L, creature->IsTappedBy(player));
+#else
         Eluna::Push(L, creature->isTappedBy(player));
+#endif
         return 1;
     }
 
@@ -372,7 +376,7 @@ namespace LuaCreature
             return 1;
 
         if (targetType == SELECT_TARGET_NEAREST || targetType == SELECT_TARGET_FARTHEST)
-            targetList.sort(Eluna::ObjectDistanceOrderPred(creature));
+            targetList.sort(ElunaUtil::ObjectDistanceOrderPred(creature));
 
         switch (targetType)
         {

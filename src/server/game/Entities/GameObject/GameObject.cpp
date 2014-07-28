@@ -16,7 +16,6 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <G3D/Quat.h>
 #include "GameObjectAI.h"
 #include "Battleground.h"
 #include "CellImpl.h"
@@ -35,6 +34,7 @@
 #include "World.h"
 #include "Transport.h"
 #include "LuaEngine.h"
+#include <G3D/Quat.h>
 
 GameObject::GameObject() : WorldObject(false), MapObject(),
     m_model(NULL), m_goValue(), m_AI(NULL)
@@ -108,7 +108,10 @@ void GameObject::CleanupsBeforeDelete(bool finalCleanup)
     WorldObject::CleanupsBeforeDelete(finalCleanup);
 
     if (m_uint32Values)                                      // field array can be not exist if GameOBject not loaded
+    {
+        m_Events.KillAllEvents(true);
         RemoveFromOwner();
+    }
 }
 
 void GameObject::RemoveFromOwner()
@@ -140,6 +143,9 @@ void GameObject::AddToWorld()
     ///- Register the gameobject for guid lookup
     if (!IsInWorld())
     {
+#ifdef ELUNA
+        sEluna->OnAddToWorld(this);
+#endif
         if (m_zoneScript)
             m_zoneScript->OnGameObjectCreate(this);
 
@@ -160,6 +166,9 @@ void GameObject::RemoveFromWorld()
     ///- Remove the gameobject from the accessor
     if (IsInWorld())
     {
+#ifdef ELUNA
+        sEluna->OnRemoveFromWorld(this);
+#endif
         if (m_zoneScript)
             m_zoneScript->OnGameObjectRemove(this);
 
@@ -289,6 +298,8 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map* map, uint32 phaseMa
 
 void GameObject::Update(uint32 diff)
 {
+    m_Events.Update(diff);
+
     if (AI())
         AI()->UpdateAI(diff);
     else if (!AIM_Initialize())

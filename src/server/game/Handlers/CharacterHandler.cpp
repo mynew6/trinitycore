@@ -1017,8 +1017,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
         SendNotification(LANG_RESET_TALENTS);
     }
 #ifdef ELUNA
-	if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
-		sEluna->OnFirstLogin(pCurrChar);
+    if (pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST))
+        sEluna->OnFirstLogin(pCurrChar);
 #endif
 
     bool firstLogin = pCurrChar->HasAtLoginFlag(AT_LOGIN_FIRST);
@@ -1044,8 +1044,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
 
     m_playerLoading = false;
 
-    // Handle Login-Achievements (should be handled after loading)
-    _player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN, 1);
+	// Handle Login-Achievements (should be handled after loading)
+	_player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN, 1);
 
   //the only place where we check if it has NPC bots
     if (sConfigMgr->GetBoolDefault("Bot.EnableNpcBots", true))

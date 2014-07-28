@@ -36,6 +36,7 @@ enum DeathKnightSpells
     SPELL_DK_BLOOD_PRESENCE                     = 48266,
     SPELL_DK_CORPSE_EXPLOSION_TRIGGERED         = 43999,
     SPELL_DK_CORPSE_EXPLOSION_VISUAL            = 51270,
+    SPELL_DK_DEATH_AND_DECAY_DAMAGE             = 52212,
     SPELL_DK_DEATH_COIL_DAMAGE                  = 47632,
     SPELL_DK_DEATH_COIL_HEAL                    = 47633,
     SPELL_DK_DEATH_STRIKE_HEAL                  = 45470,
@@ -442,6 +443,33 @@ class spell_dk_corpse_explosion : public SpellScriptLoader
         SpellScript* GetSpellScript() const override
         {
             return new spell_dk_corpse_explosion_SpellScript();
+        }
+};
+
+class spell_dk_death_and_decay : public SpellScriptLoader
+{
+    public:
+        spell_dk_death_and_decay() : SpellScriptLoader("spell_dk_death_and_decay") { }
+
+        class spell_dk_death_and_decay_AuraScript : public AuraScript
+        {
+            PrepareAuraScript(spell_dk_death_and_decay_AuraScript);
+
+            void HandleDummyTick(AuraEffect const* aurEff)
+            {
+                if (Unit* caster = GetCaster())
+                    caster->CastCustomSpell(SPELL_DK_DEATH_AND_DECAY_DAMAGE, SPELLVALUE_BASE_POINT0, aurEff->GetAmount(), GetTarget(), true, NULL, aurEff);
+            }
+
+            void Register() override
+            {
+                OnEffectPeriodic += AuraEffectPeriodicFn(spell_dk_death_and_decay_AuraScript::HandleDummyTick, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+            }
+        };
+
+        AuraScript* GetAuraScript() const override
+        {
+            return new spell_dk_death_and_decay_AuraScript();
         }
 };
 
@@ -935,6 +963,91 @@ class spell_dk_improved_unholy_presence : public SpellScriptLoader
             return new spell_dk_improved_unholy_presence_AuraScript();
         }
 };
+
+// ID - 50842 Pestilence
+class spell_dk_pestilence : public SpellScriptLoader
+{
+    public:
+        spell_dk_pestilence() : SpellScriptLoader("spell_dk_pestilence") { }
+
+        class spell_dk_pestilence_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_dk_pestilence_SpellScript);
+
+            bool Validate(SpellInfo const* /*spellInfo*/) override
+            {
+                if (!sSpellMgr->GetSpellInfo(SPELL_DK_GLYPH_OF_DISEASE)
+                    || !sSpellMgr->GetSpellInfo(SPELL_DK_BLOOD_PLAGUE)
+                    || !sSpellMgr->GetSpellInfo(SPELL_DK_FROST_FEVER))
+                    return false;
+                return true;
+            }
+
+            void OnHit(SpellEffIndex /*effIndex*/)
+            {
+                Unit* caster = GetCaster();
+                Unit* hitUnit = GetHitUnit();
+                Unit* victim = GetExplTargetUnit();
+
+                if (!victim)
+                    return;
+
+                if (victim != hitUnit || caster->HasAura(SPELL_DK_GLYPH_OF_DISEASE))
+                {
+                    if (Aura* aurOld = victim->GetAura(SPELL_DK_BLOOD_PLAGUE, caster->GetGUID())) // Check Blood Plague application on victim.
+                    {
+                        if (AuraEffect* aurEffOld = aurOld->GetEffect(EFFECT_0))
+                        {
+                            float donePct = aurEffOld->GetDonePct();
+                            float critChance = aurEffOld->GetCritChance();
+
+                            caster->CastSpell(hitUnit, SPELL_DK_BLOOD_PLAGUE, true); // Spread the disease to hitUnit.
+
+                            if (Aura* aurNew = hitUnit->GetAura(SPELL_DK_BLOOD_PLAGUE, caster->GetGUID())) // Check Blood Plague application on hitUnit.
+                            {
+                                if (AuraEffect* aurEffNew = aurNew->GetEffect(EFFECT_0))
+                                {
+                                    aurEffNew->SetCritChance(critChance); // Blood Plague can crit if caster has T9.
+                                    aurEffNew->SetDonePct(donePct);
+                                    aurEffNew->SetDamage(caster->SpellDamageBonusDone(hitUnit, aurEffNew->GetSpellInfo(), std::max(aurEffNew->GetAmount(), 0), DOT) * donePct);
+                                }
+                            }
+                        }
+                    }
+
+                    if (Aura* aurOld = victim->GetAura(SPELL_DK_FROST_FEVER, caster->GetGUID())) // Check Frost Fever application on victim.
+                    {
+                        if (AuraEffect* aurEffOld = aurOld->GetEffect(EFFECT_0))
+                        {
+                            float donePct = aurEffOld->GetDonePct();
+
+                            caster->CastSpell(hitUnit, SPELL_DK_FROST_FEVER, true); // Spread the disease to hitUnit.
+
+                            if (Aura* aurNew = hitUnit->GetAura(SPELL_DK_FROST_FEVER, caster->GetGUID())) // Check Frost Fever application on hitUnit.
+                            {
+                                if (AuraEffect* aurEffNew = aurNew->GetEffect(EFFECT_0))
+                                {
+                                    aurEffNew->SetDonePct(donePct);
+                                    aurEffNew->SetDamage(caster->SpellDamageBonusDone(hitUnit, aurEffNew->GetSpellInfo(), std::max(aurEffNew->GetAmount(), 0), DOT) * donePct);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            void Register() override
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_dk_pestilence_SpellScript::OnHit, EFFECT_2, SPELL_EFFECT_SCRIPT_EFFECT);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_dk_pestilence_SpellScript();
+        }
+};
+
 
 // 48266 - Blood Presence
 // 48263 - Frost Presence
@@ -1452,90 +1565,6 @@ class spell_dk_will_of_the_necropolis : public SpellScriptLoader
         }
 };
 
-// ID - 50842 Pestilence
-class spell_dk_pestilence : public SpellScriptLoader
-{
-    public:
-        spell_dk_pestilence() : SpellScriptLoader("spell_dk_pestilence") { }
-
-        class spell_dk_pestilence_SpellScript : public SpellScript
-        {
-            PrepareSpellScript(spell_dk_pestilence_SpellScript);
-
-            bool Validate(SpellInfo const* /*spellInfo*/) override
-            {
-                if (!sSpellMgr->GetSpellInfo(SPELL_DK_GLYPH_OF_DISEASE)
-                    || !sSpellMgr->GetSpellInfo(SPELL_DK_BLOOD_PLAGUE)
-                    || !sSpellMgr->GetSpellInfo(SPELL_DK_FROST_FEVER))
-                    return false;
-                return true;
-            }
-
-            void OnHit(SpellEffIndex /*effIndex*/)
-            {
-                Unit* caster = GetCaster();
-                Unit* hitUnit = GetHitUnit();
-                Unit* victim = GetExplTargetUnit();
-
-                if (!victim)
-                    return;
-
-                if (victim != hitUnit || caster->HasAura(SPELL_DK_GLYPH_OF_DISEASE))
-                {
-                    if (Aura* aurOld = victim->GetAura(SPELL_DK_BLOOD_PLAGUE, caster->GetGUID())) // Check Blood Plague application on victim.
-                    {
-                        if (AuraEffect* aurEffOld = aurOld->GetEffect(EFFECT_0))
-                        {
-                            float donePct = aurEffOld->GetDonePct();
-                            float critChance = aurEffOld->GetCritChance();
-
-                            caster->CastSpell(hitUnit, SPELL_DK_BLOOD_PLAGUE, true); // Spread the disease to hitUnit.
-
-                            if (Aura* aurNew = hitUnit->GetAura(SPELL_DK_BLOOD_PLAGUE, caster->GetGUID())) // Check Blood Plague application on hitUnit.
-                            {
-                                if (AuraEffect* aurEffNew = aurNew->GetEffect(EFFECT_0))
-                                {
-                                    aurEffNew->SetCritChance(critChance); // Blood Plague can crit if caster has T9.
-                                    aurEffNew->SetDonePct(donePct);
-                                    aurEffNew->SetDamage(caster->SpellDamageBonusDone(hitUnit, aurEffNew->GetSpellInfo(), std::max(aurEffNew->GetAmount(), 0), DOT) * donePct);
-                                }
-                            }
-                        }
-                    }
-
-                    if (Aura* aurOld = victim->GetAura(SPELL_DK_FROST_FEVER, caster->GetGUID())) // Check Frost Fever application on victim.
-                    {
-                        if (AuraEffect* aurEffOld = aurOld->GetEffect(EFFECT_0))
-                        {
-                            float donePct = aurEffOld->GetDonePct();
-
-                            caster->CastSpell(hitUnit, SPELL_DK_FROST_FEVER, true); // Spread the disease to hitUnit.
-
-                            if (Aura* aurNew = hitUnit->GetAura(SPELL_DK_FROST_FEVER, caster->GetGUID())) // Check Frost Fever application on hitUnit.
-                            {
-                                if (AuraEffect* aurEffNew = aurNew->GetEffect(EFFECT_0))
-                                {
-                                    aurEffNew->SetDonePct(donePct);
-                                    aurEffNew->SetDamage(caster->SpellDamageBonusDone(hitUnit, aurEffNew->GetSpellInfo(), std::max(aurEffNew->GetAmount(), 0), DOT) * donePct);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            void Register() override
-            {
-                OnEffectHitTarget += SpellEffectFn(spell_dk_pestilence_SpellScript::OnHit, EFFECT_2, SPELL_EFFECT_SCRIPT_EFFECT);
-            }
-        };
-
-        SpellScript* GetSpellScript() const override
-        {
-            return new spell_dk_pestilence_SpellScript();
-        }
-};
-
 void AddSC_deathknight_spell_scripts()
 {
     new spell_dk_anti_magic_shell_raid();
@@ -1544,6 +1573,7 @@ void AddSC_deathknight_spell_scripts()
     new spell_dk_blood_boil();
     new spell_dk_blood_gorged();
     new spell_dk_corpse_explosion();
+    new spell_dk_death_and_decay();
     new spell_dk_death_coil();
     new spell_dk_death_gate();
     new spell_dk_death_grip();

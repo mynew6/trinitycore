@@ -4,13 +4,34 @@
 * Please see the included DOCS/LICENSE.md for more information
 */
 
-#include <ace/Dirent.h>
-#include <ace/OS_NS_sys_stat.h>
 #include "HookMgr.h"
 #include "LuaEngine.h"
-#include "Includes.h"
+#include "ElunaBinding.h"
+#include "ElunaEventMgr.h"
+#include "ElunaIncludes.h"
+#include "ElunaTemplate.h"
+#include "ElunaUtility.h"
 
-Eluna::ScriptPaths Eluna::scripts;
+// Some dummy includes containing BOOST_VERSION:
+// ObjectAccessor.h Config.h Log.h
+#ifdef BOOST_VERSION
+#include <boost/filesystem.hpp>
+#else
+#include <ace/ACE.h>
+#include <ace/Dirent.h>
+#include <ace/OS_NS_sys_stat.h>
+#endif
+
+extern "C"
+{
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+};
+
+Eluna::ScriptList Eluna::lua_scripts;
+Eluna::ScriptList Eluna::lua_extensions;
+std::string Eluna::lua_folderpath;
 Eluna* Eluna::GEluna = NULL;
 bool Eluna::reload = false;
 
@@ -18,21 +39,22 @@ extern void RegisterFunctions(lua_State* L);
 
 void Eluna::Initialize()
 {
-    uint32 oldMSTime = GetCurrTime();
+    uint32 oldMSTime = ElunaUtil::GetCurrTime();
 
-    scripts.clear();
+    lua_scripts.clear();
+    lua_extensions.clear();
 
-    std::string folderpath = eConfigMgr->GetStringDefault("Eluna.ScriptPath", "lua_scripts");
+    lua_folderpath = eConfigMgr->GetStringDefault("Eluna.ScriptPath", "lua_scripts");
 #if PLATFORM == PLATFORM_UNIX || PLATFORM == PLATFORM_APPLE
-    if (folderpath[0] == '~')
+    if (lua_folderpath[0] == '~')
         if (const char* home = getenv("HOME"))
-            folderpath.replace(0, 1, home);
+            lua_folderpath.replace(0, 1, home);
 #endif
-    ELUNA_LOG_INFO("[Eluna]: Searching scripts from `%s`", folderpath.c_str());
-    GetScripts(folderpath, scripts);
-    GetScripts(folderpath + "/extensions", scripts);
+    ELUNA_LOG_INFO("[Eluna]: Searching scripts from `%s`", lua_folderpath.c_str());
+    // GetScripts(lua_folderpath + "/extensions", lua_extensions);
+    GetScripts(lua_folderpath, lua_scripts);
 
-    ELUNA_LOG_INFO("[Eluna]: Loaded %u scripts in %u ms", uint32(scripts.size()), GetTimeDiff(oldMSTime));
+    ELUNA_LOG_DEBUG("[Eluna]: Loaded %u scripts in %u ms", uint32(lua_scripts.size() + lua_extensions.size()), ElunaUtil::GetTimeDiff(oldMSTime));
 
     // Create global eluna
     new Eluna();
@@ -41,7 +63,9 @@ void Eluna::Initialize()
 void Eluna::Uninitialize()
 {
     delete GEluna;
-    scripts.clear();
+    GEluna = NULL;
+    lua_scripts.clear();
+    lua_extensions.clear();
 }
 
 void Eluna::ReloadEluna()
@@ -53,12 +77,15 @@ void Eluna::ReloadEluna()
 #ifdef TRINITY
     // Re initialize creature AI restoring C++ AI or applying lua AI
     {
+#ifdef BOOST_VERSION
+        boost::shared_lock<boost::shared_mutex> lock(*HashMapHolder<Creature>::GetLock());
+#else
         TRINITY_READ_GUARD(HashMapHolder<Creature>::LockType, *HashMapHolder<Creature>::GetLock());
+#endif
         HashMapHolder<Creature>::MapType const& m = ObjectAccessor::GetCreatures();
         for (HashMapHolder<Creature>::MapType::const_iterator iter = m.begin(); iter != m.end(); ++iter)
-        {
-            iter->second->AIM_Initialize();
-        }
+            if (iter->second->IsInWorld())
+                iter->second->AIM_Initialize();
     }
 #endif
 
@@ -102,17 +129,17 @@ playerGossipBindings(new EntryBind<HookMgr::GossipEvents>("GossipEvents (player)
     Eluna::GEluna = this;
 
     // run scripts
-    RunScripts(scripts);
+    RunScripts();
 }
 
 Eluna::~Eluna()
 {
     OnLuaStateClose();
 
+    delete m_EventMgr;
+
     // Replace this with map remove if making multithread version
     Eluna::GEluna = NULL;
-
-    delete m_EventMgr;
 
     delete ServerEventBindings;
     delete PlayerEventBindings;
@@ -133,11 +160,66 @@ Eluna::~Eluna()
     lua_close(L);
 }
 
+void Eluna::AddScriptPath(std::string filename, std::string fullpath, ScriptList& scripts)
+{
+    ELUNA_LOG_DEBUG("[Eluna]: AddScriptPath Checking file `%s`", fullpath.c_str());
+
+    // split file name
+    std::size_t extDot = filename.find_last_of('.');
+    if (extDot == std::string::npos)
+        return;
+    std::string ext = filename.substr(extDot);
+    filename = filename.substr(0, extDot);
+
+    // check extension and add path to scripts to load
+    bool luascript = ext == ".lua" || ext == ".dll";
+    bool extension = ext == ".ext" || (filename.length() >= 4 && filename.find_last_of("_ext") == filename.length() - 4);
+    if (!luascript && !extension)
+        return;
+
+    LuaScript script;
+    script.fileext = ext;
+    script.filename = filename;
+    script.filepath = fullpath;
+    script.modulepath = fullpath.substr(0, fullpath.length() - ext.length());
+    if (extension)
+        lua_extensions.push_back(script);
+    else
+        scripts.push_back(script);
+    ELUNA_LOG_DEBUG("[Eluna]: GetScripts add path `%s`", fullpath.c_str());
+}
+
 // Finds lua script files from given path (including subdirectories) and pushes them to scripts
-void Eluna::GetScripts(std::string path, ScriptPaths& scripts)
+void Eluna::GetScripts(std::string path, ScriptList& scripts)
 {
     ELUNA_LOG_DEBUG("[Eluna]: GetScripts from path `%s`", path.c_str());
 
+#ifdef BOOST_VERSION
+    boost::filesystem::path someDir(path);
+    boost::filesystem::directory_iterator end_iter;
+
+    if (boost::filesystem::exists(someDir) && boost::filesystem::is_directory(someDir))
+    {
+        for (boost::filesystem::directory_iterator dir_iter(someDir); dir_iter != end_iter; ++dir_iter)
+        {
+            std::string fullpath = dir_iter->path().generic_string();
+
+            // load subfolder
+            if (boost::filesystem::is_directory(dir_iter->status()))
+            {
+                GetScripts(fullpath, scripts);
+                continue;
+            }
+
+            if (boost::filesystem::is_regular_file(dir_iter->status()))
+            {
+                // was file, try add
+                std::string filename = dir_iter->path().filename().generic_string();
+                AddScriptPath(filename, fullpath, scripts);
+            }
+        }
+    }
+#else
     ACE_Dirent dir;
     if (dir.open(path.c_str()) == -1)
     {
@@ -166,40 +248,68 @@ void Eluna::GetScripts(std::string path, ScriptPaths& scripts)
             continue;
         }
 
-        // was file, check extension
-        ELUNA_LOG_DEBUG("[Eluna]: GetScripts Checking file `%s`", fullpath.c_str());
-        std::string ext = fullpath.substr(fullpath.length() - 4, 4);
-        if (ext != ".lua" && ext != ".dll")
-            continue;
-
-        // was correct, add path to scripts to load
-        ELUNA_LOG_DEBUG("[Eluna]: GetScripts add path `%s`", fullpath.c_str());
-        scripts.erase(fullpath);
-        scripts.insert(fullpath);
+        // was file, try add
+        std::string filename = directory->d_name;
+        AddScriptPath(filename, fullpath, scripts);
     }
+#endif
 }
 
-void Eluna::RunScripts(ScriptPaths& scripts)
+static bool ScriptpathComparator(const LuaScript& first, const LuaScript& second)
 {
+    return first.filepath.compare(second.filepath) < 0;
+}
+
+void Eluna::RunScripts()
+{
+    uint32 oldMSTime = ElunaUtil::GetCurrTime();
     uint32 count = 0;
-    // load last first to load extensions first
-    for (ScriptPaths::const_reverse_iterator it = scripts.rbegin(); it != scripts.rend(); ++it)
+
+    ScriptList scripts;
+    lua_extensions.sort(ScriptpathComparator);
+    lua_scripts.sort(ScriptpathComparator);
+    scripts.insert(scripts.end(), lua_extensions.begin(), lua_extensions.end());
+    scripts.insert(scripts.end(), lua_scripts.begin(), lua_scripts.end());
+
+    lua_getglobal(L, "package");
+    luaL_getsubtable(L, -1, "loaded");
+    int modules = lua_gettop(L);
+    for (ScriptList::const_iterator it = scripts.begin(); it != scripts.end(); ++it)
     {
-        if (!luaL_loadfile(L, it->c_str()) && !lua_pcall(L, 0, 0, 0))
+        lua_getfield(L, modules, it->modulepath.c_str());
+        if (!lua_isnoneornil(L, -1))
         {
+            lua_pop(L, 1);
+            ELUNA_LOG_DEBUG("[Eluna]: Extension was already loaded or required `%s`", it->filepath.c_str());
+            continue;
+        }
+        lua_pop(L, 1);
+        if (!luaL_loadfile(L, it->filepath.c_str()) && !lua_pcall(L, 0, 1, 0))
+        {
+            if (!lua_toboolean(L, -1))
+            {
+                lua_pop(L, 1);
+                Push(L, true);
+            }
+            lua_setfield(L, modules, it->modulepath.c_str());
+
             // successfully loaded and ran file
-            ELUNA_LOG_DEBUG("[Eluna]: Successfully loaded `%s`", it->c_str());
+            ELUNA_LOG_DEBUG("[Eluna]: Successfully loaded `%s`", it->filepath.c_str());
             ++count;
             continue;
         }
-        ELUNA_LOG_ERROR("[Eluna]: Error loading file `%s`", it->c_str());
+        ELUNA_LOG_ERROR("[Eluna]: Error loading extension `%s`", it->filepath.c_str());
         report(L);
     }
-    ELUNA_LOG_DEBUG("[Eluna]: Loaded %u Lua scripts", count);
+    lua_pop(L, 2);
+
+    ELUNA_LOG_INFO("[Eluna]: Executed %u Lua scripts in %u ms", count, ElunaUtil::GetTimeDiff(oldMSTime));
 }
 
 void Eluna::RemoveRef(const void* obj)
 {
+    if (!sEluna)
+        return;
     lua_rawgeti(sEluna->L, LUA_REGISTRYINDEX, sEluna->userdata_table);
     lua_pushfstring(sEluna->L, "%p", obj);
     lua_gettable(sEluna->L, -2);
@@ -354,11 +464,11 @@ void Eluna::Push(lua_State* L, Object const* obj)
 }
 template<> bool Eluna::CHECKVAL<bool>(lua_State* L, int narg)
 {
-    return lua_isnumber(L, narg) ? luaL_optnumber(L, narg, 1) ? true : false : lua_toboolean(L, narg);
+    return lua_isnumber(L, narg) != 0 ? luaL_optnumber(L, narg, 1) ? true : false : lua_toboolean(L, narg) != 0;
 }
 template<> bool Eluna::CHECKVAL<bool>(lua_State* L, int narg, bool def)
 {
-    return lua_isnone(L, narg) ? def : lua_isnumber(L, narg) ? luaL_optnumber(L, narg, 1) ? true : false : lua_toboolean(L, narg);
+    return lua_isnone(L, narg) != 0 ? def : lua_isnumber(L, narg) != 0 ? luaL_optnumber(L, narg, 1) != 0 ? true : false : lua_toboolean(L, narg) != 0;
 }
 template<> float Eluna::CHECKVAL<float>(lua_State* L, int narg)
 {
@@ -697,39 +807,4 @@ void Eluna::Register(uint8 regtype, uint32 id, uint32 evt, int functionRef)
     }
     luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
     luaL_error(L, "Unknown event type (regtype %d, id %d, event %d)", regtype, id, evt);
-}
-
-EventMgr::LuaEvent::LuaEvent(Eluna& _E, EventProcessor* _events, int _funcRef, uint32 _delay, uint32 _calls, Object* _obj):
-E(_E), events(_events), funcRef(_funcRef), delay(_delay), calls(_calls), obj(_obj)
-{
-    if (_events)
-        E.m_EventMgr->LuaEvents[_events].insert(this); // Able to access the event if we have the processor
-}
-
-EventMgr::LuaEvent::~LuaEvent()
-{
-    if (events)
-    {
-        // Attempt to remove the pointer from LuaEvents
-        EventMgr::EventMap::const_iterator it = E.m_EventMgr->LuaEvents.find(events); // Get event set
-        if (it != E.m_EventMgr->LuaEvents.end())
-            E.m_EventMgr->LuaEvents[events].erase(this);// Remove pointer
-    }
-    luaL_unref(E.L, LUA_REGISTRYINDEX, funcRef); // Free lua function ref
-}
-
-bool EventMgr::LuaEvent::Execute(uint64 /*time*/, uint32 /*diff*/)
-{
-    bool remove = (calls == 1);
-    if (!remove)
-        events->AddEvent(this, events->CalculateTime(delay)); // Reschedule before calling incase RemoveEvents used
-    lua_rawgeti(E.L, LUA_REGISTRYINDEX, funcRef);
-    Eluna::Push(E.L, funcRef);
-    Eluna::Push(E.L, delay);
-    Eluna::Push(E.L, calls);
-    if (!remove && calls)
-        --calls;
-    Eluna::Push(E.L, obj);
-    Eluna::ExecuteCall(E.L, 4, 0);
-    return remove; // Destory (true) event if not run
 }

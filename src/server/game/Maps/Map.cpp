@@ -2584,6 +2584,13 @@ void Map::AddObjectToRemoveList(WorldObject* obj)
 {
     ASSERT(obj->GetMapId() == GetId() && obj->GetInstanceId() == GetInstanceId());
 
+#ifdef ELUNA
+    if (Creature* creature = obj->ToCreature())
+        sEluna->OnRemove(creature);
+    else if (GameObject* gameobject = obj->ToGameObject())
+        sEluna->OnRemove(gameobject);
+#endif
+
     obj->CleanupsBeforeDelete(false);                            // remove or simplify at least cross referenced links
 
     i_objectsToRemove.insert(obj);
@@ -2861,14 +2868,13 @@ bool InstanceMap::CanEnter(Player* player)
         return false;
     }
 
-    // cannot enter while an encounter is in progress on raids
-    /*Group* group = player->GetGroup();
-    if (!player->IsGameMaster() && group && group->InCombatToInstance(GetInstanceId()) && player->GetMapId() != GetId())*/
-    /*if (IsRaid() && GetInstanceScript() && GetInstanceScript()->IsEncounterInProgress())
+    // cannot enter while an encounter is in progress
+    // allow if just loading
+    if (!player->IsLoading() && IsRaid() && GetInstanceScript() && GetInstanceScript()->IsEncounterInProgress())
     {
         player->SendTransferAborted(GetId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
         return false;
-    }*/
+    }
 
     // cannot enter if instance is in use by another party/soloer that have a
     // permanent save in the same instance id

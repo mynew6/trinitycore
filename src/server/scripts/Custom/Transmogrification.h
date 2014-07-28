@@ -30,58 +30,29 @@ enum TransmogTrinityStrings // Language.h might have same entries, appears when 
 
 class Transmogrification
 {
+private:
+    Transmogrification() {};
+    ~Transmogrification() {};
+    Transmogrification(const Transmogrification&);
+    Transmogrification& operator=(const Transmogrification&);
+
 public:
-    template <typename K, typename V>
-    class KVRWHashMap
+    static Transmogrification* instance()
     {
-    public:
-        typedef std::unordered_map<K, V> MapType;
-
-        void Insert(K k, V v)
-        {
-			boost::shared_lock<boost::shared_mutex> lock(_lock);
-            _hashMap[k] = v;
-        }
-
-        void Remove(K k)
-        {
-			boost::unique_lock<boost::shared_mutex> lock(_lock);
-            _hashMap.erase(k);
-        }
-
-        // Note, returns a pointer to a copy of the value
-        // You MUST manually delete it to avoid mem leaks
-        // use ACE_Auto_Ptr<K>
-        V* GetCopy(K k)
-        {
-            TRINITY_READ_GUARD(LockType, i_lock);
-            typename MapType::iterator itr = m_hashMap.find(k);
-            if (itr != m_hashMap.end())
-                return new V(itr->second);
-            else
-                return NULL;
-        }
-
-        MapType& GetContainer() { return m_hashMap; }
-
-        LockType& GetLock() { return i_lock; }
-
-    private:
-
-        LockType i_lock;
-        MapType m_hashMap;
-    };
+        static Transmogrification instance;
+        return &instance;
+    }
 
 #ifdef PRESETS
-    typedef std::map<uint8, uint32> presetslotMap;
-    struct presetData
-    {
-        std::string name;
-        presetslotMap slotMap;
-    };
-    typedef std::map<uint8, presetData> presetIdMap; // remember to lock
-    typedef KVRWHashMap<uint64, presetIdMap> presetPlayers;
-    presetPlayers presetMap; // presetByName[pGUID][presetID] = presetData
+    //typedef std::map<uint8, uint32> presetslotMap;
+    //struct presetData
+    //{
+    //    std::string name;
+    //    presetslotMap slotMap;
+    //};
+    //typedef std::map<uint8, presetData> presetIdMap; // remember to lock
+    // typedef KVRWHashMap<uint64, presetIdMap> presetPlayers;
+    // presetPlayers presetMap; // presetByName[pGUID][presetID] = presetData
 
     bool EnableSetInfo;
     uint32 SetNpcText;
@@ -91,17 +62,16 @@ public:
     float SetCostModifier;
     int32 SetCopperCost;
 
-    void LoadPlayerSets(uint64 pGUID);
-    void UnloadPlayerSets(uint64 pGUID);
+    void LoadPlayerSets(Player* player);
 
     void PresetTransmog(Player* player, Item* itemTransmogrified, uint32 fakeEntry, uint8 slot);
 #endif
 
-    typedef std::unordered_map<uint64, uint32> transmogData; // remember to lock
-    typedef KVRWHashMap<uint64, transmogData> transmogMap;
-    // typedef KVRWHashMap<uint64, uint64> transmogPlayers;
-    transmogMap entryMap; // entryMap[pGUID][iGUID] = entry
-    // transmogPlayers playerMap; // dataMap[iGUID] = pGUID
+    //typedef std::unordered_map<uint64, uint32> transmogData; // remember to lock
+    //typedef KVRWHashMap<uint64, transmogData> transmogMap;
+    //// typedef KVRWHashMap<uint64, uint64> transmogPlayers;
+    //transmogMap entryMap; // entryMap[pGUID][iGUID] = entry
+    //// transmogPlayers playerMap; // dataMap[iGUID] = pGUID
 
     bool EnableTransmogInfo;
     uint32 TransmogNpcText;

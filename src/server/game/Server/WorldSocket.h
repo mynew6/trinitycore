@@ -19,15 +19,14 @@
 #ifndef __WORLDSOCKET_H__
 #define __WORLDSOCKET_H__
 
-#include <memory>
-#include <chrono>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/streambuf.hpp>
 #include "Common.h"
 #include "AuthCrypt.h"
+#include "Socket.h"
 #include "Util.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include <chrono>
+#include <boost/asio/ip/tcp.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -41,23 +40,24 @@ struct ClientPktHeader
 
 #pragma pack(pop)
 
-class WorldSocket : public std::enable_shared_from_this<WorldSocket>
+class WorldSocket : public Socket<WorldSocket, std::vector<uint8> >
 {
+    typedef Socket<WorldSocket, std::vector<uint8> > Base;
+
 public:
     WorldSocket(tcp::socket&& socket);
 
     WorldSocket(WorldSocket const& right) = delete;
     WorldSocket& operator=(WorldSocket const& right) = delete;
 
-    void Start();
+    void Start() override;
 
-    std::string GetRemoteIpAddress() const { return _socket.remote_endpoint().address().to_string(); };
-    uint16 GetRemotePort() const { return _socket.remote_endpoint().port(); }
-
-    void CloseSocket() { _socket.close(); };
-    bool IsOpen() { return _socket.is_open(); };
-
+    using Base::AsyncWrite;
     void AsyncWrite(WorldPacket const& packet);
+
+protected:
+    void ReadHeaderHandler(boost::system::error_code error, size_t transferedBytes) override;
+    void ReadDataHandler(boost::system::error_code error, size_t transferedBytes) override;
 
 private:
     void HandleSendAuthSession();
@@ -65,13 +65,6 @@ private:
     void SendAuthResponseError(uint8 code);
 
     void HandlePing(WorldPacket& recvPacket);
-
-    void AsyncReadHeader();
-    void AsyncReadData(size_t dataSize);
-
-    tcp::socket _socket;
-
-    char _readBuffer[4096];
 
     uint32 _authSeed;
     AuthCrypt _authCrypt;

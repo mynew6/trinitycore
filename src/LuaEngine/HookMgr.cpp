@@ -6,7 +6,24 @@
 
 #include "HookMgr.h"
 #include "LuaEngine.h"
-#include "Includes.h"
+#include "ElunaBinding.h"
+#include "ElunaEventMgr.h"
+#include "ElunaIncludes.h"
+#include "ElunaTemplate.h"
+
+extern "C"
+{
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+};
+
+#ifndef TRINITY
+class ReactorAI;
+typedef ReactorAI ScriptedAI;
+#else
+struct ScriptedAI;
+#endif
 
 using namespace HookMgr;
 
@@ -1272,6 +1289,20 @@ void Eluna::OnUpdate(Map* map, uint32 diff)
     EVENT_EXECUTE(0);
     ENDCALL();
 }
+void Eluna::OnRemove(GameObject* gameobject)
+{
+    EVENT_BEGIN(ServerEventBindings, WORLD_EVENT_ON_DELETE_GAMEOBJECT, return);
+    Push(L, gameobject);
+    EVENT_EXECUTE(0);
+    ENDCALL();
+}
+void Eluna::OnRemove(Creature* creature)
+{
+    EVENT_BEGIN(ServerEventBindings, WORLD_EVENT_ON_DELETE_CREATURE, return);
+    Push(L, creature);
+    EVENT_EXECUTE(0);
+    ENDCALL();
+}
 
 // creature
 bool Eluna::OnDummyEffect(Unit* pCaster, uint32 spellId, SpellEffIndex effIndex, Creature* pTarget)
@@ -1372,6 +1403,22 @@ void Eluna::OnSummoned(Creature* pCreature, Unit* pSummoner)
     ENTRY_BEGIN(CreatureEventBindings, pCreature->GetEntry(), CREATURE_EVENT_ON_SUMMONED, return);
     Push(L, pCreature);
     Push(L, pSummoner);
+    ENTRY_EXECUTE(0);
+    ENDCALL();
+}
+
+void Eluna::OnAddToWorld(Creature* creature)
+{
+    ENTRY_BEGIN(CreatureEventBindings, creature->GetEntry(), CREATURE_EVENT_ON_ADD, return);
+    Push(L, creature);
+    ENTRY_EXECUTE(0);
+    ENDCALL();
+}
+
+void Eluna::OnRemoveFromWorld(Creature* creature)
+{
+    ENTRY_BEGIN(CreatureEventBindings, creature->GetEntry(), CREATURE_EVENT_ON_REMOVE, return);
+    Push(L, creature);
     ENTRY_EXECUTE(0);
     ENDCALL();
 }
@@ -1824,6 +1871,22 @@ void Eluna::OnGameObjectStateChanged(GameObject* pGameObject, uint32 state)
 void Eluna::OnSpawn(GameObject* gameobject)
 {
     ENTRY_BEGIN(GameObjectEventBindings, gameobject->GetEntry(), GAMEOBJECT_EVENT_ON_SPAWN, return);
+    Push(L, gameobject);
+    ENTRY_EXECUTE(0);
+    ENDCALL();
+}
+
+void Eluna::OnAddToWorld(GameObject* gameobject)
+{
+    ENTRY_BEGIN(GameObjectEventBindings, gameobject->GetEntry(), GAMEOBJECT_EVENT_ON_ADD, return);
+    Push(L, gameobject);
+    ENTRY_EXECUTE(0);
+    ENDCALL();
+}
+
+void Eluna::OnRemoveFromWorld(GameObject* gameobject)
+{
+    ENTRY_BEGIN(GameObjectEventBindings, gameobject->GetEntry(), GAMEOBJECT_EVENT_ON_REMOVE, return);
     Push(L, gameobject);
     ENTRY_EXECUTE(0);
     ENDCALL();

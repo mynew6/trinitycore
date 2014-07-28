@@ -1,5 +1,5 @@
 /*
-5.5
+6.0
 Transmogrification 3.3.5a - Gossip menu
 By Rochet2
 
@@ -10,14 +10,11 @@ TODO:
 Fix the cost formula
 -- Too much data handling, use default costs
 
-Are the qualities right?
-Blizzard might have changed the quality requirements.
-(TC handles it with stat checks)
-
 Cant transmogrify rediculus items // Foereaper: would be fun to stab people with a fish
 -- Cant think of any good way to handle this easily, could rip flagged items from cata DB
 */
 
+#include <regex>
 #include "ScriptPCH.h"
 #include "Config.h"
 #include "Language.h"
@@ -83,7 +80,7 @@ namespace
                     }
                 }
                 if (removed)
-                    session->SendAreaTriggerMessage(GTS(LANG_ERR_UNTRANSMOG_OK));
+                    session->SendAreaTriggerMessage("%s", GTS(LANG_ERR_UNTRANSMOG_OK));
                 else
                     session->SendNotification(LANG_ERR_UNTRANSMOG_NO_TRANSMOGS);
                 OnGossipHello(player, creature);
@@ -95,7 +92,7 @@ namespace
                     if (sTransmogrification->GetFakeEntry(newItem))
                     {
                         sTransmogrification->DeleteFakeEntry(player, newItem);
-                        session->SendAreaTriggerMessage(GTS(LANG_ERR_UNTRANSMOG_OK));
+                        session->SendAreaTriggerMessage("%s", GTS(LANG_ERR_UNTRANSMOG_OK));
                     }
                     else
                         session->SendNotification(LANG_ERR_UNTRANSMOG_NO_TRANSMOGS);
@@ -113,13 +110,12 @@ namespace
                 if (sTransmogrification->EnableSetInfo)
                     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Book_11:30:30:-18:0|tHow sets work", EQUIPMENT_SLOT_END + 10, 0);
 
-                ACE_Auto_Ptr<Transmogrification::presetIdMap> data(sTransmogrification->presetMap.GetCopy(player->GetGUID()));
-                if (data.get())
+                if (!player->presetMap.empty())
                 {
-                    for (Transmogrification::presetIdMap::const_iterator it = data->begin(); it != data->end(); ++it)
+                    for (PresetMapType::const_iterator it = player->presetMap.begin(); it != player->presetMap.end(); ++it)
                         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|t" + it->second.name, EQUIPMENT_SLOT_END + 6, it->first);
 
-                    if (data->size() < sTransmogrification->MaxSets)
+                    if (player->presetMap.size() < sTransmogrification->MaxSets)
                         player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, "|TInterface/GuildBankFrame/UI-GuildBankFrame-NewTab:30:30:-18:0|tSave set", EQUIPMENT_SLOT_END + 8, 0);
                 }
                 else
@@ -135,16 +131,13 @@ namespace
                     return true;
                 }
                 // action = presetID
-                ACE_Auto_Ptr<Transmogrification::presetIdMap> data(sTransmogrification->presetMap.GetCopy(player->GetGUID()));
-                if (data.get())
+
+                PresetMapType::const_iterator it = player->presetMap.find(action);
+                if (it != player->presetMap.end())
                 {
-                    Transmogrification::presetIdMap::const_iterator it = data->find(action);
-                    if (it != data->end())
-                    {
-                        for (Transmogrification::presetslotMap::const_iterator it2 = it->second.slotMap.begin(); it2 != it->second.slotMap.end(); ++it2)
-                            if (Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, it2->first))
-                                sTransmogrification->PresetTransmog(player, item, it2->second, it2->first);
-                    }
+                    for (PresetslotMapType::const_iterator it2 = it->second.slotMap.begin(); it2 != it->second.slotMap.end(); ++it2)
+                        if (Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, it2->first))
+                            sTransmogrification->PresetTransmog(player, item, it2->second, it2->first);
                 }
                 OnGossipSelect(player, creature, EQUIPMENT_SLOT_END + 6, action);
             } break;
@@ -156,20 +149,15 @@ namespace
                     return true;
                 }
                 // action = presetID
-                ACE_Auto_Ptr<Transmogrification::presetIdMap> data(sTransmogrification->presetMap.GetCopy(player->GetGUID()));
-                if (!data.get())
-                {
-                    OnGossipSelect(player, creature, EQUIPMENT_SLOT_END + 4, 0);
-                    return true;
-                }
-                Transmogrification::presetIdMap::const_iterator it = data->find(action);
-                if (it == data->end())
+
+                PresetMapType::const_iterator it = player->presetMap.find(action);
+                if (it == player->presetMap.end())
                 {
                     OnGossipSelect(player, creature, EQUIPMENT_SLOT_END + 4, 0);
                     return true;
                 }
 
-                for (Transmogrification::presetslotMap::const_iterator it2 = it->second.slotMap.begin(); it2 != it->second.slotMap.end(); ++it2)
+                for (PresetslotMapType::const_iterator it2 = it->second.slotMap.begin(); it2 != it->second.slotMap.end(); ++it2)
                     player->ADD_GOSSIP_ITEM(GOSSIP_ICON_MONEY_BAG, sTransmogrification->GetItemIcon(it2->second, 30, 30, -18, 0) + sTransmogrification->GetItemLink(it2->second, session), sender, action);
 
                 player->ADD_GOSSIP_ITEM_EXTENDED(GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|tUse set", EQUIPMENT_SLOT_END + 5, action, "Using this set for transmogrify will bind transmogrified items to you and make them non-refundable and non-tradeable.\nDo you wish to continue?\n\n" + it->second.name, 0, false);
@@ -185,15 +173,8 @@ namespace
                     return true;
                 }
                 // action = presetID
-            {
-                TRINITY_WRITE_GUARD(Transmogrification::presetPlayers::LockType, sTransmogrification->presetMap.GetLock());
-                Transmogrification::presetPlayers::MapType& data = sTransmogrification->presetMap.GetContainer();
-                Transmogrification::presetPlayers::MapType::iterator it = data.find(player->GetGUID());
-                if (it != data.end())
-                {
-                    it->second.erase(action);
-                }
-            }
+
+                player->presetMap.erase(action);
 
                 OnGossipSelect(player, creature, EQUIPMENT_SLOT_END + 4, 0);
             } break;
@@ -204,12 +185,13 @@ namespace
                     OnGossipHello(player, creature);
                     return true;
                 }
-                ACE_Auto_Ptr<Transmogrification::presetIdMap> data(sTransmogrification->presetMap.GetCopy(player->GetGUID()));
-                if (data.get() && data->size() >= sTransmogrification->MaxSets)
+
+                if (player->presetMap.size() >= sTransmogrification->MaxSets)
                 {
                     OnGossipHello(player, creature);
                     return true;
                 }
+
                 uint32 cost = 0;
                 bool canSave = false;
                 for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
@@ -258,7 +240,7 @@ namespace
                 // sender = slot, action = display
                 TransmogTrinityStrings res = sTransmogrification->Transmogrify(player, MAKE_NEW_GUID(action, 0, HIGHGUID_ITEM), sender);
                 if (res == LANG_ERR_TRANSMOG_OK)
-                    session->SendAreaTriggerMessage(GTS(LANG_ERR_TRANSMOG_OK));
+                    session->SendAreaTriggerMessage("%s", GTS(LANG_ERR_TRANSMOG_OK));
                 else
                     session->SendNotification(res);
                 OnGossipSelect(player, creature, EQUIPMENT_SLOT_END, sender);
@@ -279,12 +261,13 @@ namespace
                 return true;
             }
             std::string name(code);
-            if (name.find('"') != std::string::npos || name.find('\\') != std::string::npos)
+            std::regex regex("^[[:print:]]+$");
+            if (!std::regex_match(name, regex) || name.find('"') != std::string::npos || name.find('\\') != std::string::npos)
                 player->GetSession()->SendNotification(LANG_PRESET_ERR_INVALID_NAME);
             else
             {
                 int32 cost = 0;
-                Transmogrification::presetslotMap items;
+                PresetslotMapType items;
                 for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
                 {
                     if (!sTransmogrification->GetSlotName(slot, player->GetSession()))
@@ -315,25 +298,24 @@ namespace
                     }
                     else
                     {
-                        TRINITY_WRITE_GUARD(Transmogrification::presetPlayers::LockType, sTransmogrification->presetMap.GetLock());
-
-                        uint8 presetID = 0;
-                        Transmogrification::presetPlayers::MapType& data = sTransmogrification->presetMap.GetContainer();
-                        Transmogrification::presetPlayers::MapType::const_iterator it = data.find(player->GetGUID());
-                        if (it != data.end())
+                        uint8 presetID = sTransmogrification->MaxSets;
+                        if (player->presetMap.size() < sTransmogrification->MaxSets)
                         {
-                            for (; presetID < sTransmogrification->MaxSets; ++presetID) // should never reach over max
+                            for (uint8 i = 0; i < sTransmogrification->MaxSets; ++i) // should never reach over max
                             {
-                                if (it->second.find(presetID) == it->second.end())
-                                    break; // trying to find free preset
+                                if (player->presetMap.find(i) == player->presetMap.end())
+                                {
+                                    presetID = i;
+                                    break;
+                                }
                             }
                         }
 
                         if (presetID < sTransmogrification->MaxSets)
                         {
                             // Make sure code doesnt mess up SQL!
-                            data[player->GetGUID()][presetID].name = name;
-                            data[player->GetGUID()][presetID].slotMap = items;
+                            player->presetMap[presetID].name = name;
+                            player->presetMap[presetID].slotMap = items;
 
                             if (cost)
                                 player->ModifyMoney(-cost);
@@ -410,5 +392,3 @@ void AddSC_CS_Transmogrification()
 {
     new CS_Transmogrification();
 }
-
-#undef GTS

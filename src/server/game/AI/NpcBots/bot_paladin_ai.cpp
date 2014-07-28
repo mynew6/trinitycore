@@ -1001,15 +1001,15 @@ public:
             uint8 level = master->getLevel();
             //1 - SPD 3% crit 3%
             if (level >= 78)
-                RefreshAura(SPELLDMG,5); //+15%
+                RefreshAura(SPELLDMG1,5); //+15%
             else if (level >= 75)
-                RefreshAura(SPELLDMG,4); //+12%
+                RefreshAura(SPELLDMG1,4); //+12%
             else if (level >= 55)
-                RefreshAura(SPELLDMG,3); //+9%
+                RefreshAura(SPELLDMG1,3); //+9%
             else if (level >= 35)
-                RefreshAura(SPELLDMG,2); //+6%
+                RefreshAura(SPELLDMG1,2); //+6%
             else if (level >= 15)
-                RefreshAura(SPELLDMG); //+3%
+                RefreshAura(SPELLDMG1); //+3%
             //2 - SPD 6%
             if (level >= 55)
                 RefreshAura(SPELLDMG2,3); //+18%
@@ -1019,9 +1019,9 @@ public:
                 RefreshAura(SPELLDMG2); //+6%
             //Talents
             if (level >= 55)
-                RefreshAura(PURE);
+                RefreshAura(PURE1);
             if (level >= 35)
-                RefreshAura(WISE);
+                RefreshAura(WISE1);
             if (level >= 50)
                 RefreshAura(RECKONING5); //10%
             else if (level >= 45)
@@ -1135,8 +1135,8 @@ public:
         {
         //Talents
             DIVINE_PURPOSE                      = 31872,
-            PURE/*Judgements of the Pure*/      = 54155,
-            WISE/*Judgements of the Wise*/      = 31878,
+            PURE1      = 54155,
+            WISE1      = 31878,
             SACRED_CLEANSING                    = 53553,//rank 3
             RECKONING1                          = 20177,
             RECKONING2                          = 20179,
@@ -1159,7 +1159,7 @@ public:
         //Glyphs
             GLYPH_HOLY_LIGHT                    = 54937,
         //other
-            SPELLDMG/*Arcane Instability-mage*/ = 15060,//rank3 3% dam/crit
+            SPELLDMG1 = 15060,//rank3 3% dam/crit
             SPELLDMG2/*Earth and Moon - druid*/ = 48511 //rank3 6% dam
         };
 

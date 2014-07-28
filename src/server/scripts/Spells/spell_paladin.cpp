@@ -165,7 +165,7 @@ class spell_pal_ardent_defender : public SpellScriptLoader
         }
 };
 
-// 95057 - �عⷵ��
+// 95057 - »Ø¹â·µÕÕ
 class spell_pal_ardent_defender1 : public SpellScriptLoader
 {
     public:

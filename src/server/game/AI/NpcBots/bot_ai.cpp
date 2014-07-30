@@ -4083,11 +4083,6 @@ bool bot_minion_ai::CanEquip(ItemTemplate const* item, uint8 slot) const
     if (item->ItemId == master->GetBotEquip(me, slot - 1))
         return false;
 
-    //prevent equipping items with random properties (temp)
-    if (item->RandomProperty > 0 || item->RandomSuffix > 0)
-        //if (item->Quality >= ITEM_QUALITY_RARE)
-            return false;
-
     //level requirements
     if (me->getLevel() < item->RequiredLevel)
         return false;

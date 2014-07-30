@@ -524,8 +524,7 @@ inline void KillRewarder::_RewardXP(Player* player, float rate)
             _maxNotGrayMember->getLevel() >= player->getLevel())
             xp = _isFullXP ?
                 uint32(xp * rate) :             // Reward FULL XP if all group members are not gray.
-                //uint32(xp * rate / 2) + 1;      // Reward only HALF of XP if some of group members are gray.
-                uint32(xp * rate) ;
+                uint32(xp * rate / 2) + 1;      // Reward only HALF of XP if some of group members are gray.
         else
             xp = 0;
     }
@@ -590,8 +589,7 @@ void KillRewarder::_RewardPlayer(Player* player, bool isDungeon)
     if (!_isPvP || _isBattleGround)
     {
         const float rate = _group ?
-            //_groupRate * float(player->getLevel()) / _sumLevel : // Group rate depends on summary level.
-            1.0f:
+            _groupRate * float(player->getLevel()) / _sumLevel : // Group rate depends on summary level.
             1.0f;                                                // Personal rate is 100%.
         if (_xp)
             // 4.2. Give XP.

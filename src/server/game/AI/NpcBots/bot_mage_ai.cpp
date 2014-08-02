@@ -116,6 +116,8 @@ public:
             if (GC_Timer > diff || me->IsMounted() || Feasting())
                 return;
 
+            RezGroup(GetSpell(REBIRTH_1), master);
+
             if (uint32 DAMPENMAGIC = GetSpell(DAMPENMAGIC_1))
             {
                 if (!HasAuraName(me, DAMPENMAGIC) &&
@@ -177,6 +179,8 @@ public:
 
             if (!me->IsInCombat())
                 DoNonCombatActions(diff);
+            else
+                CheckBattleRez(diff);
 
             if (!CheckAttackTarget(CLASS_MAGE))
                 return;
@@ -414,6 +418,61 @@ public:
                         Polymorph = true;
                         polyCheckTimer += 2000;
                     }
+                }
+            }
+        }
+    
+        void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+					me->MonsterWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+					me->MonsterWhisper("Rezzing You", tPlayer);
+                    return;
                 }
             }
         }
@@ -777,6 +836,7 @@ public:
             InitSpellMap(COUNTERSPELL_1);
             InitSpellMap(SPELLSTEAL_1);
             InitSpellMap(EVOCATION_1);
+            InitSpellMap(REBIRTH_1);
             InitSpellMap(BLINK_1);
             InitSpellMap(REMOVE_CURSE_1);
             //InitSpellMap(INVISIBILITY_1);
@@ -927,6 +987,8 @@ public:
 
         enum MageBaseSpells
         {
+            REBIRTH_1                           = 95006,
+
             DAMPENMAGIC_1                       = 604,
             ARCANEINTELLECT_1                   = 1459,
             ARCANEMISSILES_1                    = 5143,

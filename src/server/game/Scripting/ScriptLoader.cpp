@@ -16,6 +16,7 @@
  */
 
 #include "ScriptLoader.h"
+#include "World.h"
 
 //examples
 void AddSC_example_creature();
@@ -23,9 +24,6 @@ void AddSC_example_escort();
 void AddSC_example_gossip_codebox();
 void AddSC_example_misc();
 void AddSC_example_commandscript();
-
-//TeleNPC2
-void AddSC_npc_teleport();
 
 // spells
 void AddSC_deathknight_spell_scripts();
@@ -44,7 +42,7 @@ void AddSC_item_spell_scripts();
 void AddSC_example_spell_scripts();
 void AddSC_holiday_spell_scripts();
 
-void AddSC_SmartSCripts();
+void AddSC_SmartScripts();
 
 //Commands
 void AddSC_account_commandscript();
@@ -100,6 +98,7 @@ void AddSC_npc_innkeeper();
 void AddSC_npcs_special();
 void AddSC_npc_taxi();
 void AddSC_achievement_scripts();
+void AddSC_action_ip_logger();
 
 //eastern kingdoms
 void AddSC_alterac_valley();                 //Alterac Valley
@@ -264,14 +263,12 @@ void AddSC_instance_zulgurub();
 //void AddSC_alterac_mountains();
 void AddSC_arathi_highlands();
 void AddSC_blasted_lands();
-void AddSC_boss_kruul();
 void AddSC_burning_steppes();
 void AddSC_duskwood();
 void AddSC_eastern_plaguelands();
 void AddSC_eversong_woods();
 void AddSC_ghostlands();
 void AddSC_hinterlands();
-void AddSC_ironforge();
 void AddSC_isle_of_queldanas();
 void AddSC_loch_modan();
 void AddSC_redridge_mountains();
@@ -282,7 +279,6 @@ void AddSC_swamp_of_sorrows();
 void AddSC_tirisfal_glades();
 void AddSC_undercity();
 void AddSC_western_plaguelands();
-void AddSC_westfall();
 void AddSC_wetlands();
 
 //kalimdor
@@ -472,13 +468,12 @@ void AddSC_boss_xt002();
 void AddSC_boss_kologarn();
 void AddSC_boss_assembly_of_iron();
 void AddSC_boss_general_vezax();
-void AddSC_ulduar_teleporter();
 void AddSC_boss_mimiron();
 void AddSC_boss_thorim();
 void AddSC_boss_hodir();
 void AddSC_boss_freya();
-void AddSC_boss_yoggsaron();
-void AddSC_boss_algalon();
+void AddSC_boss_yogg_saron();
+void AddSC_boss_algalon_the_observer();
 void AddSC_instance_ulduar();
 
 // Utgarde Keep - Utgarde Keep
@@ -524,7 +519,6 @@ void AddSC_instance_halls_of_reflection();   // Halls of Reflection
 void AddSC_halls_of_reflection();
 void AddSC_boss_falric();
 void AddSC_boss_marwyn();
-void AddSC_boss_lich_king_hr();
 void AddSC_boss_lord_marrowgar();       // Icecrown Citadel
 void AddSC_boss_lady_deathwhisper();
 void AddSC_boss_icecrown_gunship_battle();
@@ -701,6 +695,7 @@ void AddSC_outdoorpvp_zm();
 
 // player
 void AddSC_chat_log();
+void AddSC_action_ip_logger();
 
 #endif
 
@@ -708,7 +703,7 @@ void AddScripts()
 {
     AddExampleScripts();
     AddSpellScripts();
-    AddSC_SmartSCripts();
+    AddSC_SmartScripts();
     AddCommandScripts();
 #ifdef SCRIPTS
     AddWorldScripts();
@@ -809,7 +804,10 @@ void AddWorldScripts()
     AddSC_npcs_special();
     AddSC_npc_taxi();
     AddSC_achievement_scripts();
-    AddSC_chat_log();
+    AddSC_chat_log(); // location: scripts\World\chat_log.cpp
+    // To avoid duplicate code, we check once /*ONLY*/ if logging is permitted or not.
+    if (sWorld->getBoolConfig(CONFIG_IP_BASED_ACTION_LOGGING))
+        AddSC_action_ip_logger(); // location: scripts\World\action_ip_logger.cpp
 #endif
 }
 
@@ -978,14 +976,11 @@ void AddEasternKingdomsScripts()
     //AddSC_alterac_mountains();
     AddSC_arathi_highlands();
     AddSC_blasted_lands();
-    AddSC_boss_kruul();
     AddSC_burning_steppes();
     AddSC_duskwood();
     AddSC_eastern_plaguelands();
-    AddSC_eversong_woods();
     AddSC_ghostlands();
     AddSC_hinterlands();
-    AddSC_ironforge();
     AddSC_isle_of_queldanas();
     AddSC_loch_modan();
     AddSC_redridge_mountains();
@@ -996,7 +991,6 @@ void AddEasternKingdomsScripts()
     AddSC_tirisfal_glades();
     AddSC_undercity();
     AddSC_western_plaguelands();
-    AddSC_westfall();
     AddSC_wetlands();
 #endif
 }
@@ -1314,13 +1308,12 @@ void AddNorthrendScripts()
     AddSC_boss_general_vezax();
     AddSC_boss_assembly_of_iron();
     AddSC_boss_kologarn();
-    AddSC_ulduar_teleporter();
     AddSC_boss_mimiron();
     AddSC_boss_thorim();
     AddSC_boss_hodir();
     AddSC_boss_freya();
-    AddSC_boss_yoggsaron();
-    AddSC_boss_algalon();
+    AddSC_boss_yogg_saron();
+    AddSC_boss_algalon_the_observer();
     AddSC_instance_ulduar();
 
     // Utgarde Keep - Utgarde Keep
@@ -1366,7 +1359,6 @@ void AddNorthrendScripts()
     AddSC_halls_of_reflection();
     AddSC_boss_falric();
     AddSC_boss_marwyn();
-    AddSC_boss_lich_king_hr();
     AddSC_boss_lord_marrowgar();        // Icecrown Citadel
     AddSC_boss_lady_deathwhisper();
     AddSC_boss_icecrown_gunship_battle();
@@ -1443,8 +1435,6 @@ void AddBattlegroundScripts()
 
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
-void AddSC_CPWS_Transmogrification();
-void AddSC_REFORGER_NPC();
 //Bots
 void AddSC_death_knight_bot();
 void AddSC_druid_bot();
@@ -1460,16 +1450,15 @@ void AddSC_script_bot_commands();
 //advanced
 void AddSC_BotQuests_chapter1();
 //end Bots
+
+void AddSC_PWS_Transmogrification();
+void AddSC_CS_Transmogrification();
 #endif
 
 void AddCustomScripts()
 {
 #ifdef SCRIPTS
     /* This is where custom scripts should be added. */
-    AddSC_REFORGER_NPC();
-    // TeleNPC2
-    AddSC_CPWS_Transmogrification();
-    AddSC_npc_teleport();
     //Bots
     AddSC_death_knight_bot();
     AddSC_druid_bot();
@@ -1486,5 +1475,7 @@ void AddCustomScripts()
     AddSC_BotQuests_chapter1();
     //end Bots
 
+    AddSC_PWS_Transmogrification();
+    AddSC_CS_Transmogrification();
 #endif
 }

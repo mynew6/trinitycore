@@ -19,7 +19,9 @@ set(LuaEngine_STAT_SRCS
 include_directories(
   ${CMAKE_BINARY_DIR}
   ${CMAKE_SOURCE_DIR}/dep/recastnavigation/Detour
+  ${CMAKE_SOURCE_DIR}/dep/recastnavigation/Detour/Include
   ${CMAKE_SOURCE_DIR}/dep/recastnavigation/Recast
+  ${CMAKE_SOURCE_DIR}/dep/recastnavigation/Recast/Include
   ${CMAKE_SOURCE_DIR}/dep/g3dlite/include
   ${CMAKE_SOURCE_DIR}/dep/SFMT
   ${CMAKE_SOURCE_DIR}/dep/mersennetwister
@@ -117,9 +119,12 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/game/World
   ${CMAKE_SOURCE_DIR}/src/server/scripts/PrecompiledHeaders
   ${ACE_INCLUDE_DIR}
+  ${Boost_LIBRARIES}
   ${MYSQL_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
 )
+
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 
 add_library(LuaEngine STATIC 
   ${LuaEngine_STAT_SRCS}
@@ -129,6 +134,29 @@ add_library(LuaEngine STATIC
 
 target_link_libraries(LuaEngine
   game
+  ${Boost_LIBRARIES}
 )
 
 add_dependencies(LuaEngine game)
+
+if( WIN32 )
+  if ( MSVC )
+    add_custom_command(TARGET LuaEngine
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/lua_scripts/extensions/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/extensions ${CMAKE_BINARY_DIR}/bin/$(ConfigurationName)/lua_scripts/extensions/
+    )
+  elseif ( MINGW )
+    add_custom_command(TARGET LuaEngine
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/lua_scripts/extensions/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/extensions ${CMAKE_BINARY_DIR}/bin/lua_scripts/extensions/
+    )
+  endif()
+endif()
+
+if( UNIX )
+  install(DIRECTORY extensions DESTINATION bin/lua_scripts/)
+elseif( WIN32 )
+  install(DIRECTORY extensions DESTINATION "${CMAKE_INSTALL_PREFIX}/lua_scripts/")
+endif()

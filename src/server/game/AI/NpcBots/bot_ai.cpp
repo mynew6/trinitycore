@@ -457,7 +457,7 @@ void bot_minion_ai::RezGroup(uint32 REZZ, Player* gPlayer)
     {
         Unit* target = master;
         if (master->IsAlive()) return;
-        if (master->isRessurectRequested()) return; //resurrected
+		if (master->isResurrectRequested()) return; //resurrected
         if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
             target = (Unit*)master->GetCorpse();
         if (!target || !target->IsInWorld()) return;
@@ -483,7 +483,7 @@ void bot_minion_ai::RezGroup(uint32 REZZ, Player* gPlayer)
         Player* tPlayer = itr->GetSource();
         Unit* target = tPlayer;
         if (!tPlayer || tPlayer->IsAlive()) continue;
-        if (tPlayer->isRessurectRequested()) continue; //resurrected
+		if (tPlayer->isResurrectRequested()) continue; //resurrected
         if (Rand() > 5) continue;
         if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
             target = (Unit*)tPlayer->GetCorpse();
@@ -3452,22 +3452,22 @@ bool bot_minion_ai::OnGossipHello(Player* player, Creature* creature)
 
     if (player == creature->GetBotOwner())
     {
-        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　管理装备　", GOSSIP_SENDER_EQUIPMENT, GOSSIP_ACTION_INFO_DEF + 1);
-        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　管理职务　", GOSSIP_SENDER_ROLES, GOSSIP_ACTION_INFO_DEF + 1);
-        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　使用魔法　", GOSSIP_SENDER_ABILITIES, GOSSIP_ACTION_INFO_DEF + 1);
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "装备管理", GOSSIP_SENDER_EQUIPMENT, GOSSIP_ACTION_INFO_DEF + 1);
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "职务管理", GOSSIP_SENDER_ROLES, GOSSIP_ACTION_INFO_DEF + 1);
+        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "使用法术", GOSSIP_SENDER_ABILITIES, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
     switch (creature->GetBotClass())
     {
         case CLASS_MAGE:
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　我需要食物　", GOSSIP_SENDER_CLASS, GOSSIP_ACTION_INFO_DEF + 1);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　我需要饮料　", GOSSIP_SENDER_CLASS, GOSSIP_ACTION_INFO_DEF + 2);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "我要食物", GOSSIP_SENDER_CLASS, GOSSIP_ACTION_INFO_DEF + 1);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "我要饮料", GOSSIP_SENDER_CLASS, GOSSIP_ACTION_INFO_DEF + 2);
             break;
         default:
             break;
     }
 
-    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　没事　", 0, GOSSIP_ACTION_INFO_DEF + 1);
+    player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "没事", 0, GOSSIP_ACTION_INFO_DEF + 1);
     player->PlayerTalkClass->SendGossipMenu(GOSSIP_SERVE_MASTER, creature->GetGUID());
     return true;
 }
@@ -3534,13 +3534,13 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
             {
                 foodspell->finish(false);
                 delete foodspell;
-                me->MonsterWhisper("　我还不能这么做　", player);
+                me->MonsterWhisper("I can't do it right now", player);
             }
             else
             {
                 aftercastTargetGuid = player->GetGUID();
                 foodspell->prepare(&targets);
-                me->MonsterWhisper("　给你...", player);
+                me->MonsterWhisper("Here you go...", player);
             }
             break;
         }
@@ -3549,34 +3549,34 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
             subMenu = true;
 
             //general
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　看看我的装备　", GOSSIP_SENDER_EQUIPMENT_LIST, GOSSIP_ACTION_INFO_DEF + 1);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "查看装备", GOSSIP_SENDER_EQUIPMENT_LIST, GOSSIP_ACTION_INFO_DEF + 1);
             //player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Create itemset", GOSSIP_SENDER_EQUIPMENT_LIST, GOSSIP_ACTION_INFO_DEF + 1);
 
             //weapons
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　主手...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_MAINHAND);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "主手", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_MAINHAND);
             if (CanUseOffHand())
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　副手...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_OFFHAND);
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "副手", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_OFFHAND);
             if (CanUseRanged())
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　远程武器...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_RANGED);
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "远程", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_RANGED);
 
             //armor
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　头部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_HEAD);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　肩部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_SHOULDERS);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　胸部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_CHEST);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　腰部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_WAIST);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　腿部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_LEGS);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　脚　...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_FEET);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　手腕...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_WRIST);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　手　...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_HANDS);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　背部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_BACK);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　衬衣...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_BODY);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　手指1...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_FINGER1);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　手指2...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_FINGER2);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　饰品1...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_TRINKET1);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　饰品2...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_TRINKET2);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "　颈部...", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_NECK);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "头部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_HEAD);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "护肩", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_SHOULDERS);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "胸部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_CHEST);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "腰部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_WAIST);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "腿部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_LEGS);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "脚部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_FEET);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "手腕", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_WRIST);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "手部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_HANDS);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "背部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_BACK);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "衬衫", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_BODY);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "手指1", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_FINGER1);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "手指2", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_FINGER2);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "饰品1", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_TRINKET1);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "饰品2", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_TRINKET2);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TALK, "颈部", GOSSIP_SENDER_EQUIPMENT_SHOW, GOSSIP_ACTION_INFO_DEF + BOT_SLOT_NECK);
 
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　返回　", 1, GOSSIP_ACTION_INFO_DEF + 1);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "返回", 1, GOSSIP_ACTION_INFO_DEF + 1);
 
             break;
         }
@@ -3596,10 +3596,10 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
                     if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId))
                         _AddItemTemplateLink(master, proto, msg);
                     else
-                        msg << "　未知物品　";
-                    msg << "　所在位置　" << uint32(i) << " (" << _getNameForSlot(i + 1) << ')';
+                        msg << "Unknown item";
+                    msg << " in slot " << uint32(i) << " (" << _getNameForSlot(i + 1) << ')';
                     if (i < BOT_SLOT_RANGED && einfo && einfo->ItemEntry[i] == itemId)
-                        msg << " |cffe6cc80|h[!　初始装备　!]|h|r";
+                        msg << " |cffe6cc80|h[!standard item!]|h|r";
                     me->MonsterWhisper(msg.str().c_str(), master);
                 }
             }
@@ -3618,12 +3618,12 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
                 if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId))
                     _AddItemTemplateLink(master, proto, msg);
                 else
-                    msg << "　未知　";
+                    msg << "Unknown";
 
                 int8 id = 1;
                 EquipmentInfo const* einfo = sObjectMgr->GetEquipmentInfo(me->GetEntry(), id);
                 if (slot < BOT_SLOT_RANGED && einfo && einfo->ItemEntry[slot] == itemId)
-                    msg << " |cffe6cc80|h[!　初始物品　!]|h|r";
+                    msg << " |cffe6cc80|h[!standard item!]|h|r";
 
                 me->MonsterWhisper(msg.str().c_str(), master);
             }
@@ -3656,34 +3656,34 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
             //s2.2.0 add current item (with return)
             uint8 slot = action - (GOSSIP_ACTION_INFO_DEF + 1);
             std::ostringstream str;
-            str << "　装备中　: ";
+            str << "装备中的: ";
             if (uint32 itemId = master->GetBotEquip(me, slot))
             {
                 if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId))
                     _AddItemTemplateLink(master, proto, str);
                 else
-                    str << "未知物品";
+                    str << "unknown item";
 
                 player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, str.str().c_str(), GOSSIP_SENDER_EQUIPMENT_INFO, action);
             }
             else
             {
-                str << "　没有　";
+                str << "没有";
                 player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, str.str().c_str(), GOSSIP_SENDER_EQUIPMENT_SHOW, action);
             }
 
             //s2.2.1 add unequip option if have weapon
             if (action - GOSSIP_ACTION_INFO_DEF <= BOT_SLOT_RANGED)
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　使用原来的　", GOSSIP_SENDER_EQUIP_RESET, action);
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Use your old equipment", GOSSIP_SENDER_EQUIP_RESET, action);
 
             //s2.2.2 add unequip option if have weapon
             if (master->GetBotEquip(me, action - (GOSSIP_ACTION_INFO_DEF + 1)))
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　取下它　", GOSSIP_SENDER_UNEQUIP, action);
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Unequip it", GOSSIP_SENDER_UNEQUIP, action);
 
             //s2.2.3a: add an empty submenu with info if no items are found
             if (itemList.empty())
             {
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　晕死……我没什么给你　", 0, GOSSIP_ACTION_INFO_DEF + 1);
+                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Hm... I have nothing to give you", 0, GOSSIP_ACTION_INFO_DEF + 1);
             }
             else
             {
@@ -3705,7 +3705,7 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
                 }
             }
 
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　返回　", GOSSIP_SENDER_EQUIPMENT, GOSSIP_ACTION_INFO_DEF + 2);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "BACK", GOSSIP_SENDER_EQUIPMENT, GOSSIP_ACTION_INFO_DEF + 2);
 
             //TC_LOG_ERROR("entities.player", "OnGossipSelect(bot): added %u item(s) to list of %s (requester: %s)",
             //    counter, me->GetName().c_str(), player->GetName().c_str());
@@ -3720,7 +3720,7 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
                     me->GetBotClass() == CLASS_ROGUE || (me->GetBotClass() == CLASS_SHAMAN && IsMelee()) ||
                     me->GetBotClass() == CLASS_PALADIN || me->GetBotClass() == CLASS_HUNTER)
                 {
-                    me->MonsterSay("　什么？让我赤手空拳？不行！　", LANG_UNIVERSAL, player);
+                    me->MonsterSay("What, with my bare hands? No way", LANG_UNIVERSAL, player);
                     break;
                 }
             }
@@ -3728,7 +3728,7 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
             {
                 if (me->GetBotClass() == CLASS_ROGUE)
                 {
-                    me->MonsterSay("　不，绝不！　", LANG_UNIVERSAL, player);
+                    me->MonsterSay("No. Never", LANG_UNIVERSAL, player);
                     break;
                 }
             }
@@ -3736,19 +3736,19 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
             {
                 if (me->GetBotClass() == CLASS_HUNTER)
                 {
-                    me->MonsterSay("　是啊，很搞笑...", LANG_UNIVERSAL, player);
+                    me->MonsterSay("Yeah, very funny...", LANG_UNIVERSAL, player);
                     break;
                 }
             }
 
             if (Unequip(action - (GOSSIP_ACTION_INFO_DEF + 1)))
-                me->MonsterSay("...", LANG_UNIVERSAL, player);
+                me->MonsterSay("Hm...", LANG_UNIVERSAL, player);
             break;
         }
         case GOSSIP_SENDER_EQUIP_RESET: //equips change s4a: reset equipment
         {
             if (ResetEquipment(action - (GOSSIP_ACTION_INFO_DEF + 1)))
-                me->MonsterSay(RAND<char*>("ＯＫ", "　很好　", "　好的　", "没问题　"), LANG_UNIVERSAL, player);
+                me->MonsterSay(RAND<char*>("Fine", "Very well", "Alright", "Yeah"), LANG_UNIVERSAL, player);
             break;
         }
         //equips change s4b: Equip item
@@ -3790,7 +3790,7 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
             for (; role != BOT_MAX_ROLE; role <<= 1)
                 player->ADD_GOSSIP_ITEM(_onOffIcon(role), GetRoleString(role), GOSSIP_SENDER_ROLES_TOGGLE, GOSSIP_ACTION_INFO_DEF + role);
 
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　返回　", 1, GOSSIP_ACTION_INFO_DEF + role + 1);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "BACK", 1, GOSSIP_ACTION_INFO_DEF + role + 1);
 
             break;
         }
@@ -3828,8 +3828,8 @@ bool bot_minion_ai::OnGossipSelect(Player* player, Creature* creature, uint32 se
                 player->ADD_GOSSIP_ITEM(GOSSIP_ICON_TRAINER, name.str().c_str(), GOSSIP_SENDER_ABILITIES_USE, GOSSIP_ACTION_INFO_DEF + basespell);
             }
 
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　刷新　", GOSSIP_SENDER_ABILITIES_USE, GOSSIP_ACTION_INFO_DEF);
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "　返回　", 1, GOSSIP_ACTION_INFO_DEF + 2);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Update", GOSSIP_SENDER_ABILITIES_USE, GOSSIP_ACTION_INFO_DEF);
+            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "BACK", 1, GOSSIP_ACTION_INFO_DEF + 2);
 
             break;
         }
@@ -4082,11 +4082,6 @@ bool bot_minion_ai::CanEquip(ItemTemplate const* item, uint8 slot) const
     //prevent reequipping same items
     if (item->ItemId == master->GetBotEquip(me, slot - 1))
         return false;
-
-    //prevent equipping items with random properties (temp)
-    if (item->RandomProperty > 0 || item->RandomSuffix > 0)
-        //if (item->Quality >= ITEM_QUALITY_RARE)
-            return false;
 
     //level requirements
     if (me->getLevel() < item->RequiredLevel)
@@ -4638,43 +4633,43 @@ char const* bot_minion_ai::_getNameForSlot(uint8 slot) const
     switch (slot)
     {
         case BOT_SLOT_MAINHAND:
-            return "　主手武器　";
+            return "Main Hand Weapon";
         case BOT_SLOT_OFFHAND:
-            return "　副手武器　";
+            return "Offhand Weapon";
         case BOT_SLOT_RANGED:
-            return "　远程武器　";
+            return "Ranged Weapon";
         case BOT_SLOT_HEAD:
-            return "　头部　";
+            return "Head";
         case BOT_SLOT_SHOULDERS:
-            return "　肩部　";
+            return "Shoulders";
         case BOT_SLOT_CHEST:
-            return "　胸部　";
+            return "Chest";
         case BOT_SLOT_WAIST:
-            return "　腰部　";
+            return "Waist";
         case BOT_SLOT_LEGS:
-            return "　腿部　";
+            return "Legs";
         case BOT_SLOT_FEET:
-            return "　脚　　";
+            return "Feet";
         case BOT_SLOT_WRIST:
-            return "　手腕　";
+            return "Wrist";
         case BOT_SLOT_HANDS:
-            return "　手　　";
+            return "Hands";
         case BOT_SLOT_BACK:
-            return "　背部　";
+            return "Back";
         case BOT_SLOT_BODY:
             return "Body";
         case BOT_SLOT_FINGER1:
-            return "　戒指1　";
+            return "Finger1";
         case BOT_SLOT_FINGER2:
-            return "　戒指2　";
+            return "Finger2";
         case BOT_SLOT_TRINKET1:
-            return "　饰品1　";
+            return "Trinket1";
         case BOT_SLOT_TRINKET2:
-            return "　饰品2　";
+            return "Trinket2";
         case BOT_SLOT_NECK:
-            return "　颈部　";
+            return "Neck";
         default:
-            return "　未知　";
+            return "Unknown";
     }
 }
 
@@ -4700,19 +4695,19 @@ char const* bot_ai::GetRoleString(uint8 role) const
         case BOT_ROLE_NONE:
             return "???";
         case BOT_ROLE_TANK:
-            return "　坦克　";
+            return "Tanking";
         case BOT_ROLE_DPS:
-            return "　DPS　";
+            return "DPS";
         case BOT_ROLE_HEAL:
-            return "　治疗　";
+            return "Heal";
         //case BOT_ROLE_MELEE:
         //    return "Melee";
         case BOT_ROLE_RANGED:
-            return "　远程　";
+            return "Ranged";
         default:
         {
             std::ostringstream str;
-            str << "　角色　 " << uint32(role);
+            str << "role " << uint32(role);
             return str.str().c_str();
         }
     }

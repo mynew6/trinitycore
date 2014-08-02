@@ -444,7 +444,7 @@ void hyjalAI::MoveInLineOfSight(Unit* who)
 
 void hyjalAI::SummonCreature(uint32 entry, float Base[4][3])
 {
-    uint32 random = rand()%4;
+    uint32 random = rand32() % 4;
     float SpawnLoc[3];
 
     for (uint8 i = 0; i < 3; ++i)
@@ -529,7 +529,7 @@ void hyjalAI::SummonCreature(uint32 entry, float Base[4][3])
 void hyjalAI::SummonNextWave(const Wave wave[18], uint32 Count, float Base[4][3])
 {
     // 1 in 4 chance we give a rally yell. Not sure if the chance is offilike.
-    if (rand()%4 == 0)
+    if (rand32() % 4 == 0)
         Talk(RALLY);
 
     InfernalCount = 0;//reset infernal count every new wave
@@ -665,7 +665,7 @@ void hyjalAI::DeSpawnVeins()
 {
     if (Faction == 1)
     {
-        Creature* unit=Unit::GetCreature((*me), instance->GetData64(DATA_JAINAPROUDMOORE));
+        Creature* unit=ObjectAccessor::GetCreature((*me), instance->GetData64(DATA_JAINAPROUDMOORE));
         if (!unit)return;
         hyjalAI* ai = CAST_AI(hyjalAI, unit->AI());
         if (!ai)return;
@@ -676,7 +676,7 @@ void hyjalAI::DeSpawnVeins()
         }
     } else if (Faction)
     {
-        Creature* unit=Unit::GetCreature((*me), instance->GetData64(DATA_THRALL));
+        Creature* unit=ObjectAccessor::GetCreature((*me), instance->GetData64(DATA_THRALL));
         if (!unit)return;
         hyjalAI* ai = CAST_AI(hyjalAI, unit->AI());
         if (!ai)return;
@@ -804,7 +804,7 @@ void hyjalAI::UpdateAI(uint32 diff)
         {
             if (BossGUID[i])
             {
-                Unit* unit = Unit::GetUnit(*me, BossGUID[i]);
+                Unit* unit = ObjectAccessor::GetUnit(*me, BossGUID[i]);
                 if (unit && (!unit->IsAlive()))
                 {
                     if (BossGUID[i] == BossGUID[0])
@@ -937,7 +937,7 @@ void hyjalAI::WaypointReached(uint32 waypointId)
             DoCast(me, SPELL_MASS_TELEPORT, false);
         if (me->GetEntry() == THRALL && DummyGuid)
         {
-            if (Creature* creature = Unit::GetCreature(*me, DummyGuid))
+            if (Creature* creature = ObjectAccessor::GetCreature(*me, DummyGuid))
             {
                 hyjalAI* ai = CAST_AI(hyjalAI, creature->AI());
                 ai->DoMassTeleport = true;
@@ -1032,7 +1032,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
 
             for (uint8 i = 0; i < 25; ++i)//summon 25 ghouls
             {
-                uint8 r = rand()%4;
+                uint8 r = rand32() % 4;
                 Creature* unit = me->SummonCreature(GHOUL, AllianceBase[r][0]+irand(-15, 15), AllianceBase[r][1]+irand(-15, 15), AllianceBase[r][2], 0, TEMPSUMMON_MANUAL_DESPAWN, 2*60*1000);
                 if (unit)
                 {
@@ -1044,7 +1044,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
             }
             for (uint8 i = 0; i < 3; ++i)//summon 3 abominations
             {
-                uint8 r = rand()%4;
+                uint8 r = rand32() % 4;
                 Creature* unit = me->SummonCreature(ABOMINATION, AllianceBase[r][0]+irand(-15, 15), AllianceBase[r][1]+irand(-15, 15), AllianceBase[r][2], 0, TEMPSUMMON_MANUAL_DESPAWN, 2*60*1000);
                 if (unit)
                 {
@@ -1085,7 +1085,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
             }
             for (uint8 i = 0; i < 25; ++i)//summon 25 ghouls
             {
-                uint8 r = rand()%4;
+                uint8 r = rand32() % 4;
                 Creature* unit = me->SummonCreature(GHOUL, HordeBase[r][0]+irand(-15, 15), HordeBase[r][1]+irand(-15, 15), HordeBase[r][2], 0, TEMPSUMMON_MANUAL_DESPAWN, 2*60*1000);
                 if (unit)
                 {
@@ -1097,7 +1097,7 @@ void hyjalAI::DoOverrun(uint32 faction, const uint32 diff)
             }
             for (uint8 i = 0; i < 5; ++i)//summon 5 abominations
             {
-                uint8 r = rand()%4;
+                uint8 r = rand32() % 4;
                 Creature* unit = me->SummonCreature(ABOMINATION, HordeBase[r][0]+irand(-15, 15), HordeBase[r][1]+irand(-15, 15), HordeBase[r][2], 0, TEMPSUMMON_MANUAL_DESPAWN, 2*60*1000);
                 if (unit)
                 {

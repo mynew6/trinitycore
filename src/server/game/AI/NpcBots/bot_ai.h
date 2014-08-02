@@ -382,7 +382,7 @@ class bot_ai : public ScriptedAI
         static inline uint8 GetManaPCT(Unit* hTarget) { if (!hTarget || hTarget->isDead() || hTarget->getPowerType() != POWER_MANA) return 100; return (hTarget->GetPower(POWER_MANA)*100/(hTarget->GetMaxPower(POWER_MANA) + 1)); }
 
         typedef std::set<Unit*> AttackerSet;
-        typedef UNORDERED_MAP<uint32 /*stat*/, int32 /*statvalue*/> BotStat;
+		typedef std::unordered_map<uint32 /*stat*/, int32 /*statvalue*/> BotStat;
         typedef std::pair<uint32 /*spellId*/, uint32 /*cooldown*/> BotCTCSpell;
 
         BotStat _stats[BOT_MAX_SLOTS - 1];
@@ -402,7 +402,7 @@ class bot_ai : public ScriptedAI
         void _LocalizeGameObject(Player* forPlayer, std::string &gameobjectName, uint32 entry) const;
 
         typedef std::pair<uint32 /*spellId*/, uint32 /*cooldown*/> BotSpell;
-        typedef UNORDERED_MAP<uint32 /*spellId_1*/, BotSpell /*spell*/> BotSpellMap;
+		typedef std::unordered_map<uint32 /*spellId_1*/, BotSpell /*spell*/> BotSpellMap;
 
         BotSpellMap const& GetSpellMap() const { return spells; }
 

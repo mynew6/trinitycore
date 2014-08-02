@@ -89,6 +89,8 @@ public:
             CheckIntervene(diff);
             if (!me->IsInCombat())
                 DoNonCombatActions(diff);
+            else
+                CheckBattleRez(diff);
 
             if (!CheckAttackTarget(CLASS_WARRIOR))
             {
@@ -150,7 +152,7 @@ public:
         void EnterEvadeMode() { }
         void MoveInLineOfSight(Unit*) { }
         void JustDied(Unit* u) { bot_ai::JustDied(u); }
-        void DoNonCombatActions(uint32 /*diff*/) { }
+        void DoNonCombatActions(uint32 /*diff*/) { RezGroup(GetSpell(REBIRTH_1), master); }
 
         void modrage(int32 mod, bool set = false)
         {
@@ -745,6 +747,62 @@ public:
             return false;
         }
 
+
+		void CheckBattleRez(uint32 diff)
+        {
+            if (!IsSpellReady(REBIRTH_1, diff, false) || me->IsMounted() || IsCasting() || Rand() > 10) return;
+
+            Group* gr = master->GetGroup();
+            if (!gr)
+            {
+                Unit* target = master;
+                if (master->IsAlive()) return;
+                if (master->isResurrectRequested()) return; //ressurected
+                if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)master->GetCorpse();
+                if (!target || !target->IsInWorld())
+                    return;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+					me->MonsterWhisper("Rezzing You", master);
+
+                return;
+            }
+            for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* tPlayer = itr->GetSource();
+                Unit* target = tPlayer;
+                if (!tPlayer || tPlayer->IsAlive()) continue;
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
+                if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
+                    target = (Unit*)tPlayer->GetCorpse();
+                if (!target || !target->IsInWorld()) continue;
+                if (master->GetMap() != target->FindMap()) continue;
+                if (me->GetExactDist(target) > 75)
+                {
+                    me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
+                    SetSpellCooldown(REBIRTH_1, 0);
+                    return;
+                }
+                else if (!target->IsWithinLOSInMap(me))
+                    me->Relocate(*target);
+
+                if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
+                {
+					me->MonsterWhisper("Rezzing You", tPlayer);
+                    return;
+                }
+            }
+        }
+
         void ApplyClassDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool& crit) const
         {
             uint32 spellId = spellInfo->Id;
@@ -930,6 +988,7 @@ public:
             InitSpellMap(INTIMIDATING_SHOUT_1);
             InitSpellMap(ENRAGED_REGENERATION_1);
             InitSpellMap(CHARGE_1);
+            InitSpellMap(REBIRTH_1);
             InitSpellMap(OVERPOWER_1);
    /*Quest*/lvl >= 10 ? InitSpellMap(TAUNT_1) : RemoveSpell(TAUNT_1);
             //InitSpellMap(DISARM_1);
@@ -1056,7 +1115,8 @@ public:
 
         enum WarriorBaseSpells
         {
-            //CHALLENGING_SHOUT_1                     = 1161,
+            REBIRTH_1                           = 95006,
+
             INTIMIDATING_SHOUT_1                    = 5246,
             ENRAGED_REGENERATION_1                  = 55694,
             CHARGE_1                                = 11578,

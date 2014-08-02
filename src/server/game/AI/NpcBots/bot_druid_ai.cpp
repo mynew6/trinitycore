@@ -694,7 +694,7 @@ public:
         {
             if (GC_Timer > diff || IsCasting() || me->IsMounted()) return;
 
-            RezGroup(GetSpell(REVIVE_1), master);
+            RezGroup(GetSpell(REBIRTH_1), master);
 
             //if (Feasting()) return;
 
@@ -826,25 +826,23 @@ public:
             {
                 Unit* target = master;
                 if (master->IsAlive()) return;
-                if (master->isRessurectRequested()) return; //ressurected
+				if (master->isResurrectRequested()) return; //ressurected
                 if (master->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
                     target = (Unit*)master->GetCorpse();
                 if (!target || !target->IsInWorld())
                     return;
-                if (me->GetExactDist(target) > 30)
+                if (me->GetExactDist(target) > 75)
                 {
                     me->GetMotionMaster()->MovePoint(master->GetMapId(), *target);
-                    SetSpellCooldown(REBIRTH_1, 1500);
+                    SetSpellCooldown(REBIRTH_1, 0);
                     return;
                 }
                 else if (!target->IsWithinLOSInMap(me))
                     me->Relocate(*target);
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
-                {
-                    me->MonsterWhisper("Rezzing You", master);
-                    SetSpellCooldown(REBIRTH_1, me->getLevel() >= 60 ? 300000 : 600000); //5-10 min (improved possible)
-                }
+					me->MonsterWhisper("Rezzing You", master);
+
                 return;
             }
             for (GroupReference* itr = gr->GetFirstMember(); itr != NULL; itr = itr->next())
@@ -852,15 +850,15 @@ public:
                 Player* tPlayer = itr->GetSource();
                 Unit* target = tPlayer;
                 if (!tPlayer || tPlayer->IsAlive()) continue;
-                if (tPlayer->isRessurectRequested()) continue; //ressurected
+                if (tPlayer->isResurrectRequested()) continue; //ressurected
                 if (tPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_GHOST))
                     target = (Unit*)tPlayer->GetCorpse();
                 if (!target || !target->IsInWorld()) continue;
                 if (master->GetMap() != target->FindMap()) continue;
-                if (me->GetExactDist(target) > 30)
+                if (me->GetExactDist(target) > 75)
                 {
                     me->GetMotionMaster()->MovePoint(target->GetMapId(), *target);
-                    SetSpellCooldown(REBIRTH_1, 1500);
+                    SetSpellCooldown(REBIRTH_1, 0);
                     return;
                 }
                 else if (!target->IsWithinLOSInMap(me))
@@ -868,8 +866,7 @@ public:
 
                 if (doCast(target, GetSpell(REBIRTH_1))) //rezzing
                 {
-                    me->MonsterWhisper("Rezzing You", tPlayer);
-                    SetSpellCooldown(REBIRTH_1, me->getLevel() >= 60 ? 300000 : 600000); //5-10 min (improved possible)
+					me->MonsterWhisper("Rezzing You", tPlayer);
                     return;
                 }
             }
@@ -1128,7 +1125,7 @@ public:
      /*tal*/SWIFTMEND_1                         = 18562,
             TRANQUILITY_1                       = 740,
             REVIVE_1                            = 50769,
-            REBIRTH_1                           = 20484,
+            REBIRTH_1                           = 95006,
             BEAR_FORM_1                         = 5487,
             SWIPE_1                             = 779,
      /*tal*/MANGLE_BEAR_1                       = 33878,

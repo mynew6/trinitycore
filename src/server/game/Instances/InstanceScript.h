@@ -35,8 +35,8 @@ class Player;
 class GameObject;
 class Creature;
 
-typedef std::set<GameObject*> DoorSet;
-typedef std::set<Creature*> MinionSet;
+typedef std::set<uint64> DoorSet;
+typedef std::set<uint64> MinionSet;
 
 enum EncounterFrameType
 {
@@ -246,7 +246,7 @@ AI* GetInstanceAI(T* obj, char const* scriptName)
                 return new AI(obj);
 
     return NULL;
-};
+}
 
 template<class AI, class T>
 AI* GetInstanceAI(T* obj)
@@ -256,6 +256,6 @@ AI* GetInstanceAI(T* obj)
             return new AI(obj);
 
     return NULL;
-};
+}
 
 #endif // TRINITY_INSTANCE_DATA_H

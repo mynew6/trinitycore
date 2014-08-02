@@ -534,7 +534,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_RELOAD_COMMAND                         = 628,
     RBAC_PERM_COMMAND_RELOAD_CONDITIONS                      = 629,
     RBAC_PERM_COMMAND_RELOAD_CONFIG                          = 630,
-    RBAC_PERM_UNUSED_631                                     = 631, // unused
+    RBAC_PERM_COMMAND_RELOAD_BATTLEGROUND_TEMPLATE           = 631,
     RBAC_PERM_UNUSED_632                                     = 632, // unused
     RBAC_PERM_COMMAND_RELOAD_CREATURE_LINKED_RESPAWN         = 633,
     RBAC_PERM_COMMAND_RELOAD_CREATURE_LOOT_TEMPLATE          = 634,
@@ -683,7 +683,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_MAILBOX                                = 777,
 
     // custom permissions 1000+
-
+    
     //NpcBot command permissions
     RBAC_PERM_COMMAND_NPCBOT                                 = 1000,
     RBAC_PERM_COMMAND_NPCBOT_ADD                             = 1001,

@@ -44,6 +44,11 @@ void CreatureAI::Talk(uint8 id, WorldObject const* whisperTarget /*= NULL*/)
     sCreatureTextMgr->SendChat(me, id, whisperTarget);
 }
 
+void CreatureAI::TalkToMap(uint8 id, WorldObject const* whisperTarget /*= NULL*/)
+{
+    sCreatureTextMgr->SendChat(me, id, whisperTarget, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_MAP);
+}
+
 void CreatureAI::DoZoneInCombat(Creature* creature /*= NULL*/, float maxRangeToNearestTarget /* = 50.0f*/)
 {
     if (!creature)
@@ -200,7 +205,8 @@ bool CreatureAI::UpdateVictimWithGaze()
 
     if (Unit* victim = me->SelectVictim())
         AttackStart(victim);
-    return me->GetVictim();
+
+    return me->GetVictim() != nullptr;
 }
 
 bool CreatureAI::UpdateVictim()
@@ -212,7 +218,8 @@ bool CreatureAI::UpdateVictim()
     {
         if (Unit* victim = me->SelectVictim())
             AttackStart(victim);
-        return me->GetVictim();
+
+        return me->GetVictim() != nullptr;
     }
     else if (me->getThreatManager().isThreatListEmpty())
     {

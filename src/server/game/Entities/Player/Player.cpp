@@ -2596,7 +2596,7 @@ void Player::RefreshBot(uint32 diff)
         //Revive bot if possible
         if (m_botmap[i]->m_reviveTimer == 0)
         {
-            if (m_bot->isDead() && IsAlive() && !IsInCombat() && !InArena() && !IsInFlight() &&
+            if (m_bot->isDead() && IsAlive() &&  !InArena() && !IsInFlight() &&
                 !HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH) &&
                 !HasInvisibilityAura() && !HasStealthAura())
             {
@@ -2831,7 +2831,7 @@ void Player::CreateBot(uint32 botentry, uint8 botrace, uint8 botclass, bool revi
 {
     if (IsBeingTeleported() || IsInFlight()) return; //don't create bot yet
     if (isDead() && !revive) return; //not to revive by command so abort
-    if (IsInCombat()) return;
+    //if (IsInCombat()) return;
 
     if (m_bot != NULL && revive)
     {
@@ -3969,6 +3969,11 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
     uint8 level = getLevel();
 
     sScriptMgr->OnGivePlayerXP(this, xp, victim);
+
+    if (GetNpcBotsCount() > 1)
+    xp = uint32(xp * 1 / (GetNpcBotsCount() + 1));
+    else
+    xp = uint32(xp * 1);
 
     // XP to money conversion processed in Player::RewardQuest
     if(sWorld->getIntConfig(CONFIG_levelcap) == 1){

@@ -2546,32 +2546,6 @@ void Player::RefreshBot(uint32 diff)
     if (!HaveBot())
         return;
 
-    //BOT REVIVE SUPPORT part 2
-    //Revive timer condition (maybe we should check whole party?)
-    bool partyInCombat = IsInCombat();
-    if (!partyInCombat)
-    {
-        for (uint8 i = 0; i != GetMaxNpcBots(); ++i)
-        {
-            if (Creature* bot = m_botmap[i]->m_creature)
-            {
-                if (bot->IsInCombat())
-                {
-                    partyInCombat = true;
-                    break;
-                }
-                else if (Creature* pet = bot->GetBotsPet())
-                {
-                    if (pet->IsInCombat())
-                    {
-                        partyInCombat = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
     for (uint8 i = 0; i != GetMaxNpcBots(); ++i)
     {
         uint64 guid = m_botmap[i]->m_guid;
@@ -2579,16 +2553,10 @@ void Player::RefreshBot(uint32 diff)
 
         //BOT REVIVE SUPPORT part 2
         //Do not allow bot to be revived if master is in battle
-        if (!partyInCombat)
-        {
             if (m_botmap[i]->m_reviveTimer > diff)
-            {
-                if (!IsInCombat())
                     m_botmap[i]->m_reviveTimer -= diff;
-            }
             else if (m_botmap[i]->m_reviveTimer > 0)
                 m_botmap[i]->m_reviveTimer = 0;
-        }
 
         if (!m_bot || !m_bot->IsInWorld())
             continue;
@@ -2694,7 +2662,7 @@ void Player::RefreshBot(uint32 diff)
     {
         m_botCreateTimer = 250;
 
-        if (!IsInFlight() && IsAlive() && !IsInCombat() && GetBotMustBeCreated() && !RestrictBots())
+        if (!IsInFlight() && IsAlive() && GetBotMustBeCreated() && !RestrictBots())
             for (uint8 pos = 0; pos != GetMaxNpcBots(); ++pos)
                 if (m_botmap[pos]->m_entry != 0 && m_botmap[pos]->m_guid == 0)
                     CreateBot(m_botmap[pos]->m_entry, m_botmap[pos]->m_race, m_botmap[pos]->m_class);
@@ -3974,11 +3942,6 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
     uint8 level = getLevel();
 
     sScriptMgr->OnGivePlayerXP(this, xp, victim);
-
-    if (GetNpcBotsCount() > 1)
-    xp = uint32(xp * 1 / (GetNpcBotsCount() + 1));
-    else
-    xp = uint32(xp * 1);
 
     // XP to money conversion processed in Player::RewardQuest
     if(sWorld->getIntConfig(CONFIG_levelcap) == 1){

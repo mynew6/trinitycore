@@ -393,12 +393,6 @@ public:
             handler->SetSentErrorMessage(true);
             return false;
         }
-        if (owner->isDead())
-        {
-            owner->GetSession()->SendNotification("You're dead!");
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
         if (owner->GetGroup() && owner->GetGroup()->isRaidGroup() && owner->GetGroup()->IsFull())
         {
             handler->PSendSysMessage("Group is full, aborted");

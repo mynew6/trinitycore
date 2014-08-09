@@ -183,6 +183,9 @@ namespace Trinity
                 gain = uint32(gain * sWorld->getRate(RATE_XP_KILL));
             }
 
+            if (player->GetNpcBotsCount() > 1)
+            gain = uint32(gain / player->GetNpcBotsCount());
+
             sScriptMgr->OnGainCalculation(gain, player, u);
             return gain;
         }

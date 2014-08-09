@@ -2158,7 +2158,7 @@ void bot_minion_ai::_updateMountedState()
     //}
     ////ground
     /*else */
-    if (master->IsMounted() && !me->IsMounted() && !master->IsInCombat() && !me->IsInCombat() && !me->GetVictim())
+    if (master->IsMounted() && !me->IsMounted() && !me->GetVictim())
     {
         uint32 mount = 0;
         Unit::AuraEffectList const &mounts = master->GetAuraEffectsByType(SPELL_AURA_MOUNTED);

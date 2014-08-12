@@ -34,6 +34,7 @@ WorldSocket::WorldSocket(tcp::socket&& socket)
 
 void WorldSocket::Start()
 {
+    sScriptMgr->OnSocketOpen(shared_from_this());
     AsyncReadHeader();
     HandleSendAuthSession();
 }
@@ -104,7 +105,7 @@ void WorldSocket::ReadDataHandler()
             break;
         case CMSG_KEEP_ALIVE:
             TC_LOG_DEBUG("network", "%s", opcodeName.c_str());
-            sScriptMgr->OnPacketReceive(shared_from_this(), packet);
+            sScriptMgr->OnPacketReceive(_worldSession, packet);
 #ifdef ELUNA
                     sEluna->OnPacketReceive(_worldSession, packet);
 #endif
@@ -112,7 +113,7 @@ void WorldSocket::ReadDataHandler()
         default:
         {
             if (!_worldSession)
-                {
+            {
                 TC_LOG_ERROR("network.opcode", "ProcessIncoming: Client not authed opcode = %u", uint32(opcode));
                 break;
             }
@@ -444,4 +445,11 @@ void WorldSocket::HandlePing(WorldPacket& recvPacket)
     WorldPacket packet(SMSG_PONG, 4);
     packet << ping;
     return AsyncWrite(packet);
+}
+
+void WorldSocket::CloseSocket()
+{
+    sScriptMgr->OnSocketClose(shared_from_this());
+
+    Socket::CloseSocket();
 }

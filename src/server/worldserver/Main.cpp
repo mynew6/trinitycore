@@ -46,7 +46,6 @@
 #include "CliRunnable.h"
 #include "SystemConfig.h"
 #include "WorldSocket.h"
-#include "LuaEngine.h"
 
 using namespace boost::program_options;
 
@@ -256,9 +255,6 @@ extern int main(int argc, char** argv)
     sInstanceSaveMgr->Unload();
     sMapMgr->UnloadAll();                     // unload all grids (including locked in memory)
     sObjectAccessor->UnloadAll();             // unload 'i_player2corpse' storage and remove from world
-#ifdef ELUNA
-    Eluna::Uninitialize();
-#endif
     sScriptMgr->Unload();
     sOutdoorPvPMgr->Die();
 
@@ -285,41 +281,7 @@ extern int main(int argc, char** argv)
     if (cliThread != nullptr)
     {
 #ifdef _WIN32
-
-        // this only way to terminate CLI thread exist at Win32 (alt. way exist only in Windows Vista API)
-        //_exit(1);
-        // send keyboard input to safely unblock the CLI thread
-        INPUT_RECORD b[4];
-        HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
-        b[0].EventType = KEY_EVENT;
-        b[0].Event.KeyEvent.bKeyDown = TRUE;
-        b[0].Event.KeyEvent.uChar.AsciiChar = 'X';
-        b[0].Event.KeyEvent.wVirtualKeyCode = 'X';
-        b[0].Event.KeyEvent.wRepeatCount = 1;
-
-        b[1].EventType = KEY_EVENT;
-        b[1].Event.KeyEvent.bKeyDown = FALSE;
-        b[1].Event.KeyEvent.uChar.AsciiChar = 'X';
-        b[1].Event.KeyEvent.wVirtualKeyCode = 'X';
-        b[1].Event.KeyEvent.wRepeatCount = 1;
-
-        b[2].EventType = KEY_EVENT;
-        b[2].Event.KeyEvent.bKeyDown = TRUE;
-        b[2].Event.KeyEvent.dwControlKeyState = 0;
-        b[2].Event.KeyEvent.uChar.AsciiChar = '\r';
-        b[2].Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
-        b[2].Event.KeyEvent.wRepeatCount = 1;
-        b[2].Event.KeyEvent.wVirtualScanCode = 0x1c;
-
-        b[3].EventType = KEY_EVENT;
-        b[3].Event.KeyEvent.bKeyDown = FALSE;
-        b[3].Event.KeyEvent.dwControlKeyState = 0;
-        b[3].Event.KeyEvent.uChar.AsciiChar = '\r';
-        b[3].Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
-        b[3].Event.KeyEvent.wVirtualScanCode = 0x1c;
-        b[3].Event.KeyEvent.wRepeatCount = 1;
-        DWORD numb;
-        WriteConsoleInput(hStdIn, b, 4, &numb);
+        CancelSynchronousIo(cliThread->native_handle());
 #endif
         cliThread->join();
         delete cliThread;
@@ -333,7 +295,6 @@ extern int main(int argc, char** argv)
 
     return World::GetExitCode();
 }
-
 
 void WorldUpdateLoop()
 {

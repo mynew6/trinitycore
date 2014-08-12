@@ -17,6 +17,7 @@
  */
 
 #include "Player.h"
+#include "stdlib.h"
 #include "AccountMgr.h"
 #include "AchievementMgr.h"
 #include "ArenaTeam.h"
@@ -3927,6 +3928,10 @@ void Player::SendLogXPGain(uint32 GivenXP, Unit* victim, uint32 BonusXP, bool re
 
 void Player::GiveXP(uint32 xp, Unit* victim, float group_rate)
 {
+    uint8 rongyu = rand()%8+1;
+	  SetHonorPoints(GetHonorPoints() + rongyu);
+	  SetArenaPoints(GetArenaPoints() + rongyu);
+
     if (xp < 1)
         return;
 
@@ -10930,7 +10935,6 @@ uint8 Player::FindEquipSlot(ItemTemplate const* proto, uint32 slot, bool swap) c
                     }
                 }
             }
-
             if (GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND))
             {
                 if (proto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM || proto->SubClass == ITEM_SUBCLASS_WEAPON_STAFF)
@@ -16337,6 +16341,7 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
         AddPct(XP, (*i)->GetAmount());
 
     int32 moneyRew = 0;
+
     if (getLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
         GiveXP(XP, NULL);
     else

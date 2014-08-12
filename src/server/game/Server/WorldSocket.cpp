@@ -96,7 +96,6 @@ void WorldSocket::ReadDataHandler()
                 break;
             }
 
-            sScriptMgr->OnPacketReceive(shared_from_this(), packet);
 #ifdef ELUNA
                     if (!sEluna->OnPacketReceive(_worldSession, packet))
                         break;

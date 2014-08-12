@@ -217,7 +217,7 @@ public:
                                     if (!creature->IsAlive())
                                         creature->Respawn();
 
-                                    creature->AI()->SetData(1, 1);
+                                    creature->AI()->SetData(1, 0);
                                 }
                             me->AddAura(SPELL_ENCAGED_EMBERSEER, me);
                             instance->SetBossState(DATA_PYROGAURD_EMBERSEER, NOT_STARTED);

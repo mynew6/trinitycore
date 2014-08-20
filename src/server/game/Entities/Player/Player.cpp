@@ -2809,7 +2809,7 @@ void Player::CreateBot(uint32 botentry, uint8 botrace, uint8 botclass, bool revi
 
     if (m_bot != NULL && revive)
     {
-        m_bot->SetHealth(m_bot->GetCreateHealth() / 6);//~15% of base health
+        m_bot->SetHealth(m_bot->GetCreateHealth());//~15% of base health
         if (m_bot->getPowerType() == POWER_MANA)
             m_bot->SetPower(POWER_MANA, m_bot->GetCreateMana());
         SetUInt32Value(UNIT_NPC_FLAGS, m_bot->GetCreatureTemplate()->npcflag);
@@ -16332,8 +16332,16 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
 
     bool rewarded = (m_RewardedQuests.find(quest_id) != m_RewardedQuests.end());
 
+    uint8 jilv = rand()%99+1;
+        uint8 baoji;
+        if (jilv >= 70) {
+           baoji = rand()%3+2;
+        } else {
+           baoji = 1;
+        }
+
     // Not give XP in case already completed once repeatable quest
-    uint32 XP = rewarded ? 0 : uint32(quest->XPValue(this)*sWorld->getRate(RATE_XP_QUEST));
+    uint32 XP = rewarded ? 0 : uint32(quest->XPValue(this)*sWorld->getRate(RATE_XP_QUEST) * baoji);
 
     // handle SPELL_AURA_MOD_XP_QUEST_PCT auras
     Unit::AuraEffectList const& ModXPPctAuras = GetAuraEffectsByType(SPELL_AURA_MOD_XP_QUEST_PCT);

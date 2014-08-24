@@ -1131,7 +1131,7 @@ void Spell::SelectImplicitConeTargets(SpellEffIndex effIndex, SpellImplicitTarge
             for (std::list<WorldObject*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
             {
                 if (Unit* unitTarget = (*itr)->ToUnit())
-                    AddUnitTarget(unitTarget, effMask, false, true, center);
+                    AddUnitTarget(unitTarget, effMask, false);
                 else if (GameObject* gObjTarget = (*itr)->ToGameObject())
                     AddGOTarget(gObjTarget, effMask);
             }
@@ -1212,7 +1212,7 @@ void Spell::SelectImplicitAreaTargets(SpellEffIndex effIndex, SpellImplicitTarge
         for (std::list<WorldObject*>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
         {
             if (Unit* unitTarget = (*itr)->ToUnit())
-                AddUnitTarget(unitTarget, effMask, false);
+                AddUnitTarget(unitTarget, effMask, false, true, center);
             else if (GameObject* gObjTarget = (*itr)->ToGameObject())
                 AddGOTarget(gObjTarget, effMask);
         }
@@ -2709,7 +2709,7 @@ void Spell::DoTriggersOnSpellHit(Unit* unit, uint8 effMask)
             if (*i < 0)
                 unit->RemoveAurasDueToSpell(-(*i));
             else
-                unit->CastSpell(unit, *i, true, 0, 0, m_caster->GetGUID());
+                unit->CastSpell(unit, *i, true, nullptr, nullptr, m_caster->GetGUID());
         }
     }
 }
@@ -3425,7 +3425,14 @@ void Spell::SendSpellCooldown()
 {
     Player* _player = m_caster->ToPlayer();
     if (!_player)
+    {
+        // Handle pet cooldowns here if needed instead of in PetAI to avoid hidden cooldown restarts
+        Creature* _creature = m_caster->ToCreature();
+        if (_creature && _creature->IsPet())
+            _creature->AddCreatureSpellCooldown(m_spellInfo->Id);
+
         return;
+    }
 
     // mana/health/etc potions, disabled by client (until combat out as declarate)
     if (m_CastItem && (m_CastItem->IsPotion() || m_spellInfo->IsCooldownStartedOnEvent()))
@@ -4803,7 +4810,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                 if (IsTriggered() && m_triggeredByAuraSpell)
                     if (DynamicObject* dynObj = m_caster->GetDynObject(m_triggeredByAuraSpell->Id))
                         losTarget = dynObj;
-            
+
                 if (!(m_spellInfo->AttributesEx2 & SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS) && !DisableMgr::IsDisabledFor(DISABLE_TYPE_SPELL, m_spellInfo->Id, NULL, SPELL_DISABLE_LOS) && !target->IsWithinLOSInMap(losTarget))
                     return SPELL_FAILED_LINE_OF_SIGHT;
             }
@@ -6468,7 +6475,7 @@ bool Spell::CheckEffectTarget(Unit const* target, uint32 eff, Position const* lo
             // all ok by some way or another, skip normal check
             break;
         default:                                            // normal case
-            {
+        {
             if (losPosition)
                 return target->IsWithinLOS(losPosition->GetPositionX(), losPosition->GetPositionY(), losPosition->GetPositionZ());
             else
